@@ -1,0 +1,19 @@
+{
+  "name": "Luna — Döngü Takibi",
+  "short_name": "Luna",
+  "description": "Kişisel ve özel döngü takip uygulaması",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fcf9f7",
+  "theme_color": "#a34c61",
+  "lang": "tr",
+  "icons": [
+    {
+      "src": "/luna-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
+
