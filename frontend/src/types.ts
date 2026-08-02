@@ -34,6 +34,20 @@ export interface ProfileSetupPayload {
   average_period_length: number;
 }
 
+export interface AccountRegisterPayload extends ProfileSetupPayload {
+  email: string;
+  password: string;
+}
+
+export interface AccountLoginPayload {
+  email: string;
+  password: string;
+}
+
+export interface AuthSession {
+  email: string;
+}
+
 export interface Insights {
   average_cycle_length: number;
   average_period_length: number;

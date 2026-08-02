@@ -51,6 +51,26 @@ def init_database(path: Optional[Path] = None) -> None:
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+
+            CREATE TABLE IF NOT EXISTS accounts (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                password_hash TEXT NOT NULL,
+                password_salt TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS sessions (
+                token_hash TEXT PRIMARY KEY,
+                account_id INTEGER NOT NULL,
+                expires_at TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_sessions_expires_at
+            ON sessions(expires_at);
             """
         )
 

@@ -7,6 +7,7 @@ import {
   Download,
   Droplets,
   Heart,
+  LogOut,
   LoaderCircle,
   LockKeyhole,
   MoonStar,
@@ -18,12 +19,14 @@ import {
 } from "lucide-react";
 import { api } from "./api";
 import type {
+  AccountLoginPayload,
+  AccountRegisterPayload,
+  AuthSession,
   FlowLevel,
   Insights,
   Period,
   PeriodPayload,
-  Profile,
-  ProfileSetupPayload
+  Profile
 } from "./types";
 
 const MONTHS = [
@@ -54,11 +57,18 @@ function eachDate(start: string, end: string): string[] {
 }
 
 function Onboarding({ onComplete }: { onComplete: () => Promise<void> }) {
-  const [form, setForm] = useState<ProfileSetupPayload>({
+  const [mode, setMode] = useState<"register" | "login">("register");
+  const [form, setForm] = useState<AccountRegisterPayload>({
     name: "",
+    email: "",
+    password: "",
     last_period_start: todayIso(),
     average_cycle_length: 28,
     average_period_length: 5
+  });
+  const [loginForm, setLoginForm] = useState<AccountLoginPayload>({
+    email: "",
+    password: ""
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -68,99 +78,164 @@ function Onboarding({ onComplete }: { onComplete: () => Promise<void> }) {
     setSaving(true);
     setError("");
     try {
-      await api.setupProfile(form);
-      sessionStorage.setItem("luna-session", "active");
+      if (mode === "register") {
+        await api.register(form);
+      } else {
+        await api.login(loginForm);
+      }
       await onComplete();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Profil oluşturulamadı.");
+      setError(caught instanceof Error ? caught.message : "Oturum açılamadı.");
       setSaving(false);
     }
+  };
+
+  const switchMode = (nextMode: "register" | "login") => {
+    setMode(nextMode);
+    setError("");
   };
 
   return (
     <section className="onboarding">
       <div className="onboarding-intro">
         <span className="onboarding-icon"><MoonStar size={27} /></span>
-        <span className="eyebrow"><Sparkles size={13} /> SANA ÖZEL BAŞLANGIÇ</span>
-        <h1>Döngünü birlikte <em>tanıyalım.</em></h1>
-        <p>Birkaç temel bilgiyle takvimini ve ilk tahminlerini kişiselleştireceğiz.</p>
+        <span className="eyebrow"><Sparkles size={13} /> KİŞİSEL DÖNGÜ ALANIN</span>
+        <h1>{mode === "register" ? <>Döngünü birlikte <em>tanıyalım.</em></> : <>Tekrar <em>hoş geldin.</em></>}</h1>
+        <p>{mode === "register" ? "Birkaç temel bilgiyle takvimini ve ilk tahminlerini kişiselleştireceğiz." : "Hesabına giriş yaparak kaldığın yerden devam et."}</p>
         <div className="privacy-note">
           <ShieldCheck size={20} />
-          <div><strong>Verilerin senin kontrolünde</strong><span>Bilgilerin bu uygulamanın özel veritabanında saklanır.</span></div>
+          <div><strong>Verilerin senin kontrolünde</strong><span>Parolan güvenli şekilde hash’lenir; hiçbir zaman düz metin saklanmaz.</span></div>
         </div>
       </div>
 
       <form className="onboarding-form panel" onSubmit={submit}>
-        <div className="step-indicator"><span>1</span><i /><span>2</span><i /><span>3</span></div>
+        <div className="auth-tabs" role="tablist" aria-label="Hesap işlemleri">
+          <button type="button" className={mode === "register" ? "active" : ""} onClick={() => switchMode("register")}>İlk kez kullanıyorum</button>
+          <button type="button" className={mode === "login" ? "active" : ""} onClick={() => switchMode("login")}>Hesabım var</button>
+        </div>
         <div className="onboarding-title">
-          <span className="eyebrow">PROFİLİNİ OLUŞTUR</span>
-          <h2>Merhaba, seni nasıl tanıyalım?</h2>
-          <p>Bu bilgiler ilk kişisel tahminlerinin temelini oluşturur.</p>
+          <span className="eyebrow">{mode === "register" ? "HESABINI OLUŞTUR" : "GİRİŞ YAP"}</span>
+          <h2>{mode === "register" ? "Merhaba, seni nasıl tanıyalım?" : "Kişisel takvimine dön"}</h2>
+          <p>{mode === "register" ? "Bilgilerin ilk kişisel tahminlerinin temelini oluşturur." : "Hesabını oluştururken kullandığın bilgileri gir."}</p>
         </div>
 
-        <label>
-          İsmin
-          <input
-            required
-            autoFocus
-            maxLength={60}
-            placeholder="Örn. Ayşe"
-            value={form.name}
-            onChange={(event) => setForm({ ...form, name: event.target.value })}
-          />
-        </label>
-
-        <label>
-          Son regl başlangıç tarihin
-          <input
-            required
-            type="date"
-            max={todayIso()}
-            value={form.last_period_start}
-            onChange={(event) => setForm({ ...form, last_period_start: event.target.value })}
-          />
-          <small>Kanamanın başladığı ilk günü seç.</small>
-        </label>
-
-        <div className="onboarding-number-grid">
-          <label>
-            Ortalama döngün
-            <div className="number-input">
+        {mode === "register" ? (
+          <>
+            <label>
+              İsmin
               <input
                 required
-                type="number"
-                min={15}
-                max={60}
-                value={form.average_cycle_length}
-                onChange={(event) => setForm({ ...form, average_cycle_length: Number(event.target.value) })}
+                autoFocus
+                maxLength={60}
+                placeholder="Örn. Ayşe"
+                value={form.name}
+                onChange={(event) => setForm({ ...form, name: event.target.value })}
               />
-              <span>gün</span>
+            </label>
+            <div className="auth-credentials-grid">
+              <label>
+                E-posta
+                <input
+                  required
+                  type="email"
+                  autoComplete="email"
+                  placeholder="ayse@ornek.com"
+                  value={form.email}
+                  onChange={(event) => setForm({ ...form, email: event.target.value })}
+                />
+              </label>
+              <label>
+                Parola
+                <input
+                  required
+                  type="password"
+                  minLength={8}
+                  autoComplete="new-password"
+                  placeholder="En az 8 karakter"
+                  value={form.password}
+                  onChange={(event) => setForm({ ...form, password: event.target.value })}
+                />
+              </label>
             </div>
-            <small>Genellikle 21–35 gün arasıdır.</small>
-          </label>
-          <label>
-            Regl süren
-            <div className="number-input">
+            <label>
+              Son regl başlangıç tarihin
               <input
                 required
-                type="number"
-                min={1}
-                max={15}
-                value={form.average_period_length}
-                onChange={(event) => setForm({ ...form, average_period_length: Number(event.target.value) })}
+                type="date"
+                max={todayIso()}
+                value={form.last_period_start}
+                onChange={(event) => setForm({ ...form, last_period_start: event.target.value })}
               />
-              <span>gün</span>
+              <small>Kanamanın başladığı ilk günü seç.</small>
+            </label>
+            <div className="onboarding-number-grid">
+              <label>
+                Ortalama döngün
+                <div className="number-input">
+                  <input
+                    required
+                    type="number"
+                    min={15}
+                    max={60}
+                    value={form.average_cycle_length}
+                    onChange={(event) => setForm({ ...form, average_cycle_length: Number(event.target.value) })}
+                  />
+                  <span>gün</span>
+                </div>
+                <small>Genellikle 21–35 gün arasıdır.</small>
+              </label>
+              <label>
+                Regl süren
+                <div className="number-input">
+                  <input
+                    required
+                    type="number"
+                    min={1}
+                    max={15}
+                    value={form.average_period_length}
+                    onChange={(event) => setForm({ ...form, average_period_length: Number(event.target.value) })}
+                  />
+                  <span>gün</span>
+                </div>
+                <small>Kanamanın sürdüğü gün sayısı.</small>
+              </label>
             </div>
-            <small>Kanamanın sürdüğü gün sayısı.</small>
+          </>
+        ) : (
+          <div className="login-fields">
+          <label>
+            E-posta
+            <input
+              required
+              autoFocus
+              type="email"
+              autoComplete="email"
+              placeholder="ayse@ornek.com"
+              value={loginForm.email}
+              onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })}
+            />
           </label>
-        </div>
+          <label>
+            Parola
+            <input
+              required
+              type="password"
+              minLength={8}
+              autoComplete="current-password"
+              placeholder="Parolan"
+              value={loginForm.password}
+              onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })}
+            />
+          </label>
+          </div>
+        )}
 
         {error && <p className="form-error">{error}</p>}
         <button className="primary-button full-width onboarding-submit" disabled={saving}>
           {saving ? <LoaderCircle className="spin" size={18} /> : <ArrowRight size={18} />}
-          Takvimimi oluştur
+          {mode === "register" ? "Hesabımı ve takvimimi oluştur" : "Hesabıma giriş yap"}
         </button>
-        <p className="medical-caption">Tahminler yaklaşık bilgi sağlar ve tıbbi öneri değildir.</p>
+        <p className="medical-caption">{mode === "register" ? "Tahminler yaklaşık bilgi sağlar ve tıbbi öneri değildir." : "Oturumun bu cihazda güvenli şekilde hatırlanır."}</p>
       </form>
     </section>
   );
@@ -296,6 +371,7 @@ function AddPeriodModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
 }
 
 export default function App() {
+  const [session, setSession] = useState<AuthSession | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [periods, setPeriods] = useState<Period[]>([]);
   const [insights, setInsights] = useState<Insights | null>(null);
@@ -306,6 +382,14 @@ export default function App() {
   const loadData = useCallback(async () => {
     setError("");
     try {
+      const sessionData = await api.getSession();
+      setSession(sessionData);
+      if (!sessionData) {
+        setProfile(null);
+        setPeriods([]);
+        setInsights(null);
+        return;
+      }
       const [profileData, periodData, insightData] = await Promise.all([
         api.getProfile(),
         api.getPeriods(),
@@ -322,6 +406,15 @@ export default function App() {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  const logout = async () => {
+    await api.logout();
+    setSession(null);
+    setProfile(null);
+    setPeriods([]);
+    setInsights(null);
+    setModalOpen(false);
+  };
 
   const removePeriod = async (period: Period) => {
     if (!window.confirm(`${FULL_DATE_FORMAT.format(toLocalDate(period.start_date))} kaydını silmek istiyor musun?`)) return;
@@ -343,7 +436,8 @@ export default function App() {
     <div className="app-shell">
       <header className="topbar">
         <a className="brand" href="#top" aria-label="Luna ana sayfa"><span className="brand-icon"><MoonStar size={20} /></span><span>Luna</span></a>
-        <div className="privacy-pill"><LockKeyhole size={14} /> {profile ? profile.name + " · özel oturum" : "Verilerin sana özel"}</div>
+        <div className="privacy-pill" title={session?.email}><LockKeyhole size={14} /> {profile ? profile.name + " · özel oturum" : "Verilerin sana özel"}</div>
+        {profile && <button className="logout-button" onClick={logout}><LogOut size={15} /> Çıkış</button>}
         {profile && <button className="primary-button desktop-add" onClick={() => setModalOpen(true)}><Plus size={18} /> Yeni kayıt</button>}
       </header>
 

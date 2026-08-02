@@ -44,6 +44,20 @@ class ProfileSetup(BaseModel):
     average_period_length: int = Field(default=5, ge=1, le=15)
 
 
+class AccountRegister(ProfileSetup):
+    email: str = Field(min_length=5, max_length=254)
+    password: str = Field(min_length=8, max_length=128)
+
+
+class AccountLogin(BaseModel):
+    email: str = Field(min_length=5, max_length=254)
+    password: str = Field(min_length=8, max_length=128)
+
+
+class AuthSession(BaseModel):
+    email: str
+
+
 class Profile(BaseModel):
     name: str
     average_cycle_length: int
