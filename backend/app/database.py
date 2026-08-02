@@ -40,6 +40,17 @@ def init_database(path: Optional[Path] = None) -> None:
 
             CREATE INDEX IF NOT EXISTS idx_periods_start_date
             ON periods(start_date DESC);
+
+            CREATE TABLE IF NOT EXISTS profile (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                name TEXT NOT NULL,
+                average_cycle_length INTEGER NOT NULL DEFAULT 28
+                    CHECK (average_cycle_length BETWEEN 15 AND 60),
+                average_period_length INTEGER NOT NULL DEFAULT 5
+                    CHECK (average_period_length BETWEEN 1 AND 15),
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
             """
         )
 
@@ -50,4 +61,3 @@ def get_connection() -> Iterator[sqlite3.Connection]:
         yield connection
     finally:
         connection.close()
-

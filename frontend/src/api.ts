@@ -1,4 +1,10 @@
-import type { Insights, Period, PeriodPayload } from "./types";
+import type {
+  Insights,
+  Period,
+  PeriodPayload,
+  Profile,
+  ProfileSetupPayload
+} from "./types";
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -25,6 +31,9 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  getProfile: () => request<Profile | null>("/api/profile"),
+  setupProfile: (payload: ProfileSetupPayload) =>
+    request<Profile>("/api/profile", { method: "PUT", body: JSON.stringify(payload) }),
   getPeriods: () => request<Period[]>("/api/periods"),
   getInsights: () => request<Insights>("/api/insights"),
   createPeriod: (payload: PeriodPayload) =>
@@ -32,4 +41,3 @@ export const api = {
   deletePeriod: (id: number) => request<void>(`/api/periods/${id}`, { method: "DELETE" }),
   exportUrl: "/api/export"
 };
-

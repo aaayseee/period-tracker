@@ -63,3 +63,31 @@ def test_rejects_invalid_date_range(tmp_path):
         )
         assert response.status_code == 422
 
+
+def test_onboarding_creates_profile_and_personalized_prediction(tmp_path):
+    with build_client(tmp_path) as client:
+        assert client.get("/api/profile").json() is None
+
+        response = client.put(
+            "/api/profile",
+            json={
+                "name": "Ayse",
+                "last_period_start": "2026-07-10",
+                "average_cycle_length": 31,
+                "average_period_length": 6,
+            },
+        )
+        assert response.status_code == 200
+        assert response.json()["name"] == "Ayse"
+
+        periods = client.get("/api/periods").json()
+        assert len(periods) == 1
+        assert periods[0]["start_date"] == "2026-07-10"
+        assert periods[0]["end_date"] == "2026-07-15"
+
+        insights = client.get(
+            "/api/insights", params={"today": "2026-07-20"}
+        ).json()
+        assert insights["average_cycle_length"] == 31
+        assert insights["average_period_length"] == 6
+        assert insights["next_period_start"] == "2026-08-10"

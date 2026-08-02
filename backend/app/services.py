@@ -2,9 +2,9 @@ import json
 import statistics
 from datetime import date, datetime, timedelta
 from sqlite3 import Row
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
-from .schemas import Insights, Period
+from .schemas import Insights, Period, Profile
 
 
 def row_to_period(row: Row) -> Period:
@@ -13,7 +13,20 @@ def row_to_period(row: Row) -> Period:
     return Period(**values)
 
 
-def calculate_insights(periods: Iterable[Period], today: date) -> Insights:
+def row_to_profile(row: Optional[Row]) -> Optional[Profile]:
+    if row is None:
+        return None
+    values = dict(row)
+    values.pop("id", None)
+    return Profile(**values)
+
+
+def calculate_insights(
+    periods: Iterable[Period],
+    today: date,
+    default_cycle_length: int = 28,
+    default_period_length: int = 5,
+) -> Insights:
     ordered: List[Period] = sorted(periods, key=lambda item: item.start_date)
 
     cycle_lengths = [
@@ -27,8 +40,16 @@ def calculate_insights(periods: Iterable[Period], today: date) -> Insights:
         if item.end_date is not None
     ]
 
-    average_cycle = round(statistics.mean(cycle_lengths)) if cycle_lengths else 28
-    average_period = round(statistics.mean(period_lengths)) if period_lengths else 5
+    average_cycle = (
+        round(statistics.mean(cycle_lengths))
+        if cycle_lengths
+        else default_cycle_length
+    )
+    average_period = (
+        round(statistics.mean(period_lengths))
+        if period_lengths
+        else default_period_length
+    )
     variation = (
         round(statistics.pstdev(cycle_lengths)) if len(cycle_lengths) >= 2 else None
     )
@@ -66,4 +87,3 @@ def calculate_insights(periods: Iterable[Period], today: date) -> Insights:
 
 def utc_now() -> datetime:
     return datetime.utcnow()
-

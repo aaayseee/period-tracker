@@ -19,6 +19,21 @@ export interface PeriodPayload {
   notes: string;
 }
 
+export interface Profile {
+  name: string;
+  average_cycle_length: number;
+  average_period_length: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProfileSetupPayload {
+  name: string;
+  last_period_start: string;
+  average_cycle_length: number;
+  average_period_length: number;
+}
+
 export interface Insights {
   average_cycle_length: number;
   average_period_length: number;
@@ -33,4 +48,3 @@ export interface Insights {
   confidence: "low" | "medium" | "high";
   is_estimate: boolean;
 }
-

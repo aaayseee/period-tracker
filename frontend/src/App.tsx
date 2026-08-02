@@ -1,5 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ArrowRight,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
@@ -10,12 +11,20 @@ import {
   LockKeyhole,
   MoonStar,
   Plus,
+  ShieldCheck,
   Sparkles,
   Trash2,
   X
 } from "lucide-react";
 import { api } from "./api";
-import type { FlowLevel, Insights, Period, PeriodPayload } from "./types";
+import type {
+  FlowLevel,
+  Insights,
+  Period,
+  PeriodPayload,
+  Profile,
+  ProfileSetupPayload
+} from "./types";
 
 const MONTHS = [
   "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
@@ -42,6 +51,119 @@ function eachDate(start: string, end: string): string[] {
     current.setDate(current.getDate() + 1);
   }
   return dates;
+}
+
+function Onboarding({ onComplete }: { onComplete: () => Promise<void> }) {
+  const [form, setForm] = useState<ProfileSetupPayload>({
+    name: "",
+    last_period_start: todayIso(),
+    average_cycle_length: 28,
+    average_period_length: 5
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    try {
+      await api.setupProfile(form);
+      sessionStorage.setItem("luna-session", "active");
+      await onComplete();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Profil oluşturulamadı.");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="onboarding">
+      <div className="onboarding-intro">
+        <span className="onboarding-icon"><MoonStar size={27} /></span>
+        <span className="eyebrow"><Sparkles size={13} /> SANA ÖZEL BAŞLANGIÇ</span>
+        <h1>Döngünü birlikte <em>tanıyalım.</em></h1>
+        <p>Birkaç temel bilgiyle takvimini ve ilk tahminlerini kişiselleştireceğiz.</p>
+        <div className="privacy-note">
+          <ShieldCheck size={20} />
+          <div><strong>Verilerin senin kontrolünde</strong><span>Bilgilerin bu uygulamanın özel veritabanında saklanır.</span></div>
+        </div>
+      </div>
+
+      <form className="onboarding-form panel" onSubmit={submit}>
+        <div className="step-indicator"><span>1</span><i /><span>2</span><i /><span>3</span></div>
+        <div className="onboarding-title">
+          <span className="eyebrow">PROFİLİNİ OLUŞTUR</span>
+          <h2>Merhaba, seni nasıl tanıyalım?</h2>
+          <p>Bu bilgiler ilk kişisel tahminlerinin temelini oluşturur.</p>
+        </div>
+
+        <label>
+          İsmin
+          <input
+            required
+            autoFocus
+            maxLength={60}
+            placeholder="Örn. Ayşe"
+            value={form.name}
+            onChange={(event) => setForm({ ...form, name: event.target.value })}
+          />
+        </label>
+
+        <label>
+          Son regl başlangıç tarihin
+          <input
+            required
+            type="date"
+            max={todayIso()}
+            value={form.last_period_start}
+            onChange={(event) => setForm({ ...form, last_period_start: event.target.value })}
+          />
+          <small>Kanamanın başladığı ilk günü seç.</small>
+        </label>
+
+        <div className="onboarding-number-grid">
+          <label>
+            Ortalama döngün
+            <div className="number-input">
+              <input
+                required
+                type="number"
+                min={15}
+                max={60}
+                value={form.average_cycle_length}
+                onChange={(event) => setForm({ ...form, average_cycle_length: Number(event.target.value) })}
+              />
+              <span>gün</span>
+            </div>
+            <small>Genellikle 21–35 gün arasıdır.</small>
+          </label>
+          <label>
+            Regl süren
+            <div className="number-input">
+              <input
+                required
+                type="number"
+                min={1}
+                max={15}
+                value={form.average_period_length}
+                onChange={(event) => setForm({ ...form, average_period_length: Number(event.target.value) })}
+              />
+              <span>gün</span>
+            </div>
+            <small>Kanamanın sürdüğü gün sayısı.</small>
+          </label>
+        </div>
+
+        {error && <p className="form-error">{error}</p>}
+        <button className="primary-button full-width onboarding-submit" disabled={saving}>
+          {saving ? <LoaderCircle className="spin" size={18} /> : <ArrowRight size={18} />}
+          Takvimimi oluştur
+        </button>
+        <p className="medical-caption">Tahminler yaklaşık bilgi sağlar ve tıbbi öneri değildir.</p>
+      </form>
+    </section>
+  );
 }
 
 function Calendar({ periods, insights }: { periods: Period[]; insights: Insights | null }) {
@@ -174,6 +296,7 @@ function AddPeriodModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
 }
 
 export default function App() {
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [periods, setPeriods] = useState<Period[]>([]);
   const [insights, setInsights] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
@@ -183,7 +306,12 @@ export default function App() {
   const loadData = useCallback(async () => {
     setError("");
     try {
-      const [periodData, insightData] = await Promise.all([api.getPeriods(), api.getInsights()]);
+      const [profileData, periodData, insightData] = await Promise.all([
+        api.getProfile(),
+        api.getPeriods(),
+        api.getInsights()
+      ]);
+      setProfile(profileData);
       setPeriods(periodData);
       setInsights(insightData);
     } catch (caught) {
@@ -215,8 +343,8 @@ export default function App() {
     <div className="app-shell">
       <header className="topbar">
         <a className="brand" href="#top" aria-label="Luna ana sayfa"><span className="brand-icon"><MoonStar size={20} /></span><span>Luna</span></a>
-        <div className="privacy-pill"><LockKeyhole size={14} /> Verilerin sana özel</div>
-        <button className="primary-button desktop-add" onClick={() => setModalOpen(true)}><Plus size={18} /> Yeni kayıt</button>
+        <div className="privacy-pill"><LockKeyhole size={14} /> {profile ? profile.name + " · özel oturum" : "Verilerin sana özel"}</div>
+        {profile && <button className="primary-button desktop-add" onClick={() => setModalOpen(true)}><Plus size={18} /> Yeni kayıt</button>}
       </header>
 
       <main id="top">
@@ -224,12 +352,14 @@ export default function App() {
           <div className="loading-state"><LoaderCircle className="spin" /><span>Döngün hazırlanıyor…</span></div>
         ) : error ? (
           <div className="empty-state"><MoonStar size={32} /><h2>API bağlantısı kurulamadı</h2><p>{error} Backend'in çalıştığından emin olup tekrar deneyebilirsin.</p><button className="primary-button" onClick={loadData}>Tekrar dene</button></div>
+        ) : !profile ? (
+          <Onboarding onComplete={loadData} />
         ) : (
           <>
             <section className="hero">
               <div className="hero-copy">
                 <span className="eyebrow"><Sparkles size={13} /> BUGÜNÜN ÖZETİ</span>
-                <h1>Merhaba, <em>kendine iyi bak.</em></h1>
+                <h1>Merhaba {profile.name}, <em>kendine iyi bak.</em></h1>
                 <p>Döngünü kendi ritminde, sakin ve güvenli bir alanda takip et.</p>
               </div>
               <div className="countdown-card">
@@ -273,9 +403,8 @@ export default function App() {
         )}
       </main>
 
-      <button className="mobile-fab" onClick={() => setModalOpen(true)} aria-label="Yeni kayıt ekle"><Plus size={23} /></button>
-      {modalOpen && <AddPeriodModal onClose={() => setModalOpen(false)} onSaved={async () => { setModalOpen(false); await loadData(); }} />}
+      {profile && <button className="mobile-fab" onClick={() => setModalOpen(true)} aria-label="Yeni kayıt ekle"><Plus size={23} /></button>}
+      {profile && modalOpen && <AddPeriodModal onClose={() => setModalOpen(false)} onSaved={async () => { setModalOpen(false); await loadData(); }} />}
     </div>
   );
 }
-

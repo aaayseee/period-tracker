@@ -37,6 +37,21 @@ class Period(PeriodBase):
     updated_at: datetime
 
 
+class ProfileSetup(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+    last_period_start: date
+    average_cycle_length: int = Field(default=28, ge=15, le=60)
+    average_period_length: int = Field(default=5, ge=1, le=15)
+
+
+class Profile(BaseModel):
+    name: str
+    average_cycle_length: int
+    average_period_length: int
+    created_at: datetime
+    updated_at: datetime
+
+
 class Insights(BaseModel):
     average_cycle_length: int
     average_period_length: int
@@ -54,5 +69,5 @@ class Insights(BaseModel):
 
 class ExportData(BaseModel):
     exported_at: datetime
+    profile: Optional[Profile] = None
     periods: List[Period]
-

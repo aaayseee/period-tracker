@@ -1,15 +1,23 @@
 import json
 import sqlite3
 from contextlib import asynccontextmanager
-from datetime import date
-from typing import List
+from datetime import date, timedelta
+from typing import List, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import get_connection, init_database
-from .schemas import ExportData, Insights, Period, PeriodCreate, PeriodUpdate
-from .services import calculate_insights, row_to_period, utc_now
+from .schemas import (
+    ExportData,
+    Insights,
+    Period,
+    PeriodCreate,
+    PeriodUpdate,
+    Profile,
+    ProfileSetup,
+)
+from .services import calculate_insights, row_to_period, row_to_profile, utc_now
 
 
 @asynccontextmanager
@@ -37,6 +45,55 @@ app.add_middleware(
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}
+
+
+@app.get("/api/profile", response_model=Optional[Profile])
+def get_profile(
+    connection: sqlite3.Connection = Depends(get_connection),
+) -> Optional[Profile]:
+    row = connection.execute("SELECT * FROM profile WHERE id = 1").fetchone()
+    return row_to_profile(row)
+
+
+@app.put("/api/profile", response_model=Profile)
+def setup_profile(
+    payload: ProfileSetup,
+    connection: sqlite3.Connection = Depends(get_connection),
+) -> Profile:
+    clean_name = payload.name.strip()
+    if not clean_name:
+        raise HTTPException(status_code=422, detail="Name cannot be empty.")
+
+    period_end = payload.last_period_start + timedelta(
+        days=payload.average_period_length - 1
+    )
+    connection.execute(
+        """
+        INSERT INTO profile (
+            id, name, average_cycle_length, average_period_length
+        ) VALUES (1, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name,
+            average_cycle_length = excluded.average_cycle_length,
+            average_period_length = excluded.average_period_length,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (
+            clean_name,
+            payload.average_cycle_length,
+            payload.average_period_length,
+        ),
+    )
+    connection.execute(
+        """
+        INSERT OR IGNORE INTO periods (start_date, end_date, flow, symptoms, notes)
+        VALUES (?, ?, 'medium', '[]', 'Onboarding setup')
+        """,
+        (payload.last_period_start.isoformat(), period_end.isoformat()),
+    )
+    connection.commit()
+    row = connection.execute("SELECT * FROM profile WHERE id = 1").fetchone()
+    return row_to_profile(row)
 
 
 @app.get("/api/periods", response_model=List[Period])
@@ -140,7 +197,14 @@ def insights(
 ) -> Insights:
     rows = connection.execute("SELECT * FROM periods ORDER BY start_date").fetchall()
     periods = [row_to_period(row) for row in rows]
-    return calculate_insights(periods, today or date.today())
+    profile_row = connection.execute("SELECT * FROM profile WHERE id = 1").fetchone()
+    profile = row_to_profile(profile_row)
+    return calculate_insights(
+        periods,
+        today or date.today(),
+        profile.average_cycle_length if profile else 28,
+        profile.average_period_length if profile else 5,
+    )
 
 
 @app.get("/api/export", response_model=ExportData)
@@ -150,8 +214,9 @@ def export_data(
     rows = connection.execute(
         "SELECT * FROM periods ORDER BY start_date"
     ).fetchall()
+    profile_row = connection.execute("SELECT * FROM profile WHERE id = 1").fetchone()
     return ExportData(
         exported_at=utc_now(),
+        profile=row_to_profile(profile_row),
         periods=[row_to_period(row) for row in rows],
     )
-
