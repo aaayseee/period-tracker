@@ -146,7 +146,16 @@ main { max-width: 1180px; margin: 0 auto; padding: 50px 28px 72px; }
 .settings-modal { width: min(500px, 100%); }
 .settings-hint { margin: -2px 0 15px; padding: 11px 12px; color: var(--muted); border-radius: 10px; background: #f8f4f2; font-size: 9px; line-height: 1.5; }
 .settings-divider { height: 1px; margin: 25px 0; background: var(--line); }
-.security-section h3 { margin: 5px 0 16px; font-size: 16px; }
+.security-section h3, .data-section h3 { margin: 5px 0 10px; font-size: 16px; }
+.section-description { margin: 0 0 14px; color: var(--muted); font-size: 9px; line-height: 1.6; }
+.visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
+.backup-file-picker { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 8px; min-height: 43px; margin: 0 0 12px; padding: 10px 12px; border: 1px dashed #c99da7; border-radius: 11px; color: var(--rose-dark); background: #fbf1f1; cursor: pointer; font-size: 10px; }
+.backup-file-picker:hover { border-color: var(--rose); background: #f9e9eb; }
+.restore-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 11px; padding: 3px; border: 1px solid var(--line); border-radius: 12px; background: #f8f4f2; }
+.restore-mode button { padding: 8px 6px; border: 0; border-radius: 9px; color: var(--muted); background: transparent; font-size: 10px; }
+.restore-mode button.active { color: var(--rose-dark); background: white; box-shadow: 0 2px 8px rgba(65,45,50,.08); font-weight: 600; }
+.restore-hint { margin: 0 0 12px; }
+.restore-message { margin-top: 10px; }
 .recovery-settings { margin-top: 20px; padding: 15px; border: 1px solid #e6dcdf; border-radius: 13px; background: #faf6f5; }
 .recovery-settings strong { font-size: 11px; }.recovery-settings p { margin: 4px 0 10px; color: var(--muted); font-size: 9px; line-height: 1.5; }
 .form-success { margin: 10px 0 0; color: #50705b; font-size: 10px; }

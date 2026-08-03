@@ -203,6 +203,49 @@ Opsiyonel `today=YYYY-MM-DD` parametresi test ve deterministik hesaplama için k
 
 Profil ve tüm regl kayıtlarını JSON olarak döndürür. Auth hesabı, parola hash'i ve session token'ları dışa aktarılmaz.
 
+Yanıtın `schema_version` alanı mevcut yedek sözleşmesi için `1` değeridir. En fazla 5000 regl kaydı desteklenir.
+
+### `POST /api/restore`
+
+Geçerli session gerektirir. `GET /api/export` yanıtını geri yükler:
+
+```json
+{
+  "backup": {
+    "schema_version": 1,
+    "exported_at": "2026-08-03T12:00:00",
+    "profile": {
+      "name": "Ayşe",
+      "average_cycle_length": 28,
+      "average_period_length": 5,
+      "created_at": "2026-08-01T10:00:00",
+      "updated_at": "2026-08-01T10:00:00"
+    },
+    "periods": []
+  },
+  "mode": "replace"
+}
+```
+
+`mode` seçenekleri:
+
+- `replace`: Profil ve regl kayıtlarını yedekteki verilerle atomik olarak değiştirir. Yedekte profil zorunludur.
+- `merge`: Mevcut profil ve aynı başlangıç tarihli kayıtları korur; yalnızca eksik tarihleri ekler.
+
+Başarılı yanıt:
+
+```json
+{
+  "mode": "replace",
+  "imported_periods": 12,
+  "skipped_periods": 0,
+  "total_periods": 12,
+  "profile_restored": true
+}
+```
+
+Dosyadaki kayıt kimlikleri dikkate alınmaz; veritabanı yeni yerel kimlikler üretir. Hesap, parola, kurtarma kodu ve session tablolarına yazılmaz. Tüm işlem tek SQLite transaction'ında gerçekleşir.
+
 ## Sağlık kontrolü
 
 ### `GET /health`

@@ -56,7 +56,7 @@ $env:PERIOD_TRACKER_SECURE_COOKIE = "true"
 
 ## API koruması
 
-Profil, regl kayıtları, tahmin ve export endpoint'leri geçerli session ister. Session olmadan `401 Unauthorized` döner.
+Profil, regl kayıtları, tahmin, export ve restore endpoint'leri geçerli session ister. Session olmadan `401 Unauthorized` döner.
 
 Public endpoint'ler:
 
@@ -124,6 +124,17 @@ backend/data/period_tracker.db
 Bu dosyanın kopyası tüm kişisel sağlık verilerini içerebilir. Dosya paylaşılmamalı, bulut yedeği kullanılacaksa şifrelenmelidir.
 
 JSON export profil ve regl kayıtlarını içerdiği için aynı hassasiyetle korunmalıdır.
+
+JSON geri yükleme:
+
+- Yalnızca geçerli session ile çalışır.
+- Pydantic ile sürüm, alan, tarih aralığı, akış, belirti ve kayıt sayısı doğrulaması yapar.
+- Aynı yedekte yinelenen başlangıç tarihlerini reddeder.
+- Dışarıdan gelen kayıt kimliklerini kullanmaz.
+- Hesap, parola, kurtarma kodu ve session tablolarını değiştirmez.
+- Tek transaction kullanır; hata halinde tüm değişiklikleri geri alır.
+
+JSON dosyası şifreli değildir. Paylaşılmamalı; bulut veya taşınabilir diskte saklanacaksa ayrıca şifrelenmelidir.
 
 ## Güvenlik açığı bildirimi
 

@@ -52,6 +52,7 @@ Değerlendirme: Temel istatistiksel algoritma ve API entegrasyonu sağlamdır. K
 | İlk kullanım onboarding | Tamamlandı | İsim, hesap, son tarih ve ortalama değerler |
 | Daha önceki hesaba giriş | Tamamlandı | E-posta/parola, kalıcı session ve çıkış |
 | Yedek alma | Tamamlandı | Profil ve kayıtların JSON export'u |
+| JSON geri yükleme | Tamamlandı | Sürüm kontrollü doğrulama, atomik tamamen değiştirme ve güvenli birleştirme seçenekleri |
 | Profil/kayıt düzenleme | Tamamlandı | Ayarlar modalı ve geçmiş kayıt düzenleme formu |
 
 Değerlendirme: 3. aşama çalışır durumdadır. UI component testleri ve erişilebilirlik denetimi gelecekte eklenmelidir.

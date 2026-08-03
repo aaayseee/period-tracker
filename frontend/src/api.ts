@@ -2,6 +2,7 @@ import type {
   AccountLoginPayload,
   AccountRegisterPayload,
   AuthSession,
+  BackupData,
   Insights,
   Period,
   PeriodPayload,
@@ -11,7 +12,9 @@ import type {
   Profile,
   ProfileUpdatePayload,
   RecoveryCodeResult,
-  RegistrationResult
+  RegistrationResult,
+  RestorePayload,
+  RestoreResult
 } from "./types";
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
@@ -27,8 +30,22 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   if (!response.ok) {
     let message = "Bir şeyler ters gitti.";
     try {
-      const error = await response.json();
-      message = typeof error.detail === "string" ? error.detail : message;
+      const error: unknown = await response.json();
+      if (typeof error === "object" && error !== null && "detail" in error) {
+        const detail = (error as { detail: unknown }).detail;
+        if (typeof detail === "string") {
+          message = detail;
+        } else if (Array.isArray(detail)) {
+          const validationMessages = detail
+            .map((item) => (
+              typeof item === "object" && item !== null && "msg" in item
+                ? String((item as { msg: unknown }).msg)
+                : ""
+            ))
+            .filter(Boolean);
+          if (validationMessages.length) message = validationMessages.join(" ");
+        }
+      }
     } catch {
       // The fallback message is enough for non-JSON server errors.
     }
@@ -80,5 +97,11 @@ export const api = {
       body: JSON.stringify(payload)
     }),
   deletePeriod: (id: number) => request<void>(`/api/periods/${id}`, { method: "DELETE" }),
+  restoreBackup: (payload: RestorePayload) =>
+    request<RestoreResult>("/api/restore", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
+  getBackup: () => request<BackupData>("/api/export"),
   exportUrl: "/api/export"
 };

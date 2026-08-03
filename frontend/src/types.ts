@@ -77,6 +77,28 @@ export interface RecoveryCodeResult {
   recovery_code: string;
 }
 
+export interface BackupData {
+  schema_version?: 1;
+  exported_at: string;
+  profile: Profile | null;
+  periods: Period[];
+}
+
+export type RestoreMode = "replace" | "merge";
+
+export interface RestorePayload {
+  backup: BackupData;
+  mode: RestoreMode;
+}
+
+export interface RestoreResult {
+  mode: RestoreMode;
+  imported_periods: number;
+  skipped_periods: number;
+  total_periods: number;
+  profile_restored: boolean;
+}
+
 export interface Insights {
   average_cycle_length: number;
   average_period_length: number;

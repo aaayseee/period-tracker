@@ -246,3 +246,110 @@ def test_password_change_and_recovery_code_flow(tmp_path):
                 "password": "kurtarilan-parola",
             },
         ).status_code == 200
+
+
+def test_json_backup_restore_replace_and_merge(tmp_path):
+    with build_client(tmp_path) as client:
+        assert register(client).status_code == 200
+        assert client.post(
+            "/api/periods",
+            json={
+                "start_date": "2026-05-01",
+                "end_date": "2026-05-05",
+                "flow": "medium",
+                "symptoms": ["Kramp"],
+                "notes": "Yedeklenecek kayıt",
+            },
+        ).status_code == 201
+
+        backup = client.get("/api/export").json()
+        assert backup["schema_version"] == 1
+        assert len(backup["periods"]) == 2
+
+        assert client.put(
+            "/api/profile",
+            json={
+                "name": "Yedek Sonrası",
+                "average_cycle_length": 35,
+                "average_period_length": 7,
+            },
+        ).status_code == 200
+        assert client.post(
+            "/api/periods",
+            json={
+                "start_date": "2026-06-01",
+                "end_date": "2026-06-04",
+                "flow": "light",
+                "symptoms": [],
+                "notes": "Yedekte yok",
+            },
+        ).status_code == 201
+
+        restored = client.post(
+            "/api/restore",
+            json={"backup": backup, "mode": "replace"},
+        )
+        assert restored.status_code == 200
+        assert restored.json() == {
+            "mode": "replace",
+            "imported_periods": 2,
+            "skipped_periods": 0,
+            "total_periods": 2,
+            "profile_restored": True,
+        }
+        assert client.get("/api/profile").json()["name"] == "Ayse"
+        assert all(
+            period["start_date"] != "2026-06-01"
+            for period in client.get("/api/periods").json()
+        )
+
+        assert client.put(
+            "/api/profile",
+            json={
+                "name": "Mevcut Profil",
+                "average_cycle_length": 30,
+                "average_period_length": 6,
+            },
+        ).status_code == 200
+        new_period = dict(backup["periods"][0])
+        new_period.update(
+            {
+                "id": 999999,
+                "start_date": "2026-06-15",
+                "end_date": "2026-06-19",
+                "notes": "Birleştirilen kayıt",
+            }
+        )
+        merge_backup = {**backup, "periods": [*backup["periods"], new_period]}
+        merged = client.post(
+            "/api/restore",
+            json={"backup": merge_backup, "mode": "merge"},
+        )
+        assert merged.status_code == 200
+        assert merged.json() == {
+            "mode": "merge",
+            "imported_periods": 1,
+            "skipped_periods": 2,
+            "total_periods": 3,
+            "profile_restored": False,
+        }
+        assert client.get("/api/profile").json()["name"] == "Mevcut Profil"
+        assert any(
+            period["start_date"] == "2026-06-15"
+            for period in client.get("/api/periods").json()
+        )
+
+        duplicate_backup = {
+            **backup,
+            "periods": [backup["periods"][0], backup["periods"][0]],
+        }
+        assert client.post(
+            "/api/restore",
+            json={"backup": duplicate_backup, "mode": "replace"},
+        ).status_code == 422
+
+        assert client.post("/api/auth/logout").status_code == 204
+        assert client.post(
+            "/api/restore",
+            json={"backup": backup, "mode": "replace"},
+        ).status_code == 401

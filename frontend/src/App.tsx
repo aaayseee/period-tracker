@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   Sparkles,
   Trash2,
+  Upload,
   X
 } from "lucide-react";
 import { api } from "./api";
@@ -27,6 +28,7 @@ import type {
   AccountLoginPayload,
   AccountRegisterPayload,
   AuthSession,
+  BackupData,
   FlowLevel,
   Insights,
   Period,
@@ -34,7 +36,8 @@ import type {
   PasswordChangePayload,
   PasswordRecoveryPayload,
   Profile,
-  ProfileUpdatePayload
+  ProfileUpdatePayload,
+  RestoreMode
 } from "./types";
 
 const MONTHS = [
@@ -490,11 +493,13 @@ function PeriodModal({
 function SettingsModal({
   profile,
   onClose,
-  onSaved
+  onSaved,
+  onRestored
 }: {
   profile: Profile;
   onClose: () => void;
   onSaved: () => Promise<void>;
+  onRestored: () => Promise<void>;
 }) {
   const [form, setForm] = useState<ProfileUpdatePayload>({
     name: profile.name,
@@ -511,6 +516,12 @@ function SettingsModal({
   const [securityError, setSecurityError] = useState("");
   const [securitySuccess, setSecuritySuccess] = useState("");
   const [settingsRecoveryCode, setSettingsRecoveryCode] = useState("");
+  const [restoreBackup, setRestoreBackup] = useState<BackupData | null>(null);
+  const [restoreFileName, setRestoreFileName] = useState("");
+  const [restoreMode, setRestoreMode] = useState<RestoreMode>("replace");
+  const [restoreSaving, setRestoreSaving] = useState(false);
+  const [restoreError, setRestoreError] = useState("");
+  const [restoreSuccess, setRestoreSuccess] = useState("");
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -556,6 +567,61 @@ function SettingsModal({
     }
   };
 
+  const selectBackup = async (file?: File) => {
+    setRestoreBackup(null);
+    setRestoreFileName("");
+    setRestoreError("");
+    setRestoreSuccess("");
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setRestoreError("Yedek dosyası en fazla 5 MB olabilir.");
+      return;
+    }
+
+    try {
+      const parsed: unknown = JSON.parse(await file.text());
+      if (
+        typeof parsed !== "object" ||
+        parsed === null ||
+        typeof (parsed as { exported_at?: unknown }).exported_at !== "string" ||
+        !Array.isArray((parsed as { periods?: unknown }).periods)
+      ) {
+        throw new Error("Bu dosya Luna JSON yedeği biçiminde değil.");
+      }
+      setRestoreBackup(parsed as BackupData);
+      setRestoreFileName(file.name);
+    } catch (caught) {
+      setRestoreError(caught instanceof Error ? caught.message : "Yedek dosyası okunamadı.");
+    }
+  };
+
+  const restoreData = async () => {
+    if (!restoreBackup) return;
+    const warning = restoreMode === "replace"
+      ? "Mevcut profil ayarların ve tüm regl kayıtların yedekteki verilerle değiştirilecek. Bu işlem geri alınamaz. Devam edilsin mi?"
+      : "Yalnızca mevcut olmayan tarihli kayıtlar eklenecek; mevcut profilin ve kayıtların korunacak. Devam edilsin mi?";
+    if (!window.confirm(warning)) return;
+
+    setRestoreSaving(true);
+    setRestoreError("");
+    setRestoreSuccess("");
+    try {
+      const result = await api.restoreBackup({ backup: restoreBackup, mode: restoreMode });
+      await onRestored();
+      const skipped = result.skipped_periods
+        ? `, ${result.skipped_periods} mevcut kayıt atlandı`
+        : "";
+      setRestoreSuccess(
+        `Geri yükleme tamamlandı: ${result.imported_periods} kayıt aktarıldı${skipped}. Toplam ${result.total_periods} kayıt var.`
+      );
+    } catch (caught) {
+      setRestoreError(caught instanceof Error ? caught.message : "Yedek geri yüklenemedi.");
+    } finally {
+      setRestoreSaving(false);
+    }
+  };
+
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section className="modal settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
@@ -587,6 +653,40 @@ function SettingsModal({
             {saving ? <LoaderCircle className="spin" size={18} /> : <Check size={18} />} Ayarları kaydet
           </button>
         </form>
+        <div className="settings-divider" />
+        <div className="data-section">
+          <span className="eyebrow">VERİ YÖNETİMİ</span>
+          <h3>JSON yedeğini geri yükle</h3>
+          <p className="section-description">Luna'dan indirdiğin bir JSON yedeğini seç. Hesap, parola ve oturum bilgileri yedekten etkilenmez.</p>
+          <label className="backup-file-picker">
+            <input
+              className="visually-hidden"
+              type="file"
+              accept="application/json,.json"
+              onChange={(event) => void selectBackup(event.target.files?.[0])}
+            />
+            <Upload size={17} />
+            <span>{restoreFileName || "JSON yedek dosyası seç"}</span>
+          </label>
+          {restoreBackup && (
+            <>
+              <div className="restore-mode" role="group" aria-label="Geri yükleme yöntemi">
+                <button type="button" className={restoreMode === "replace" ? "active" : ""} onClick={() => setRestoreMode("replace")}>Tamamen değiştir</button>
+                <button type="button" className={restoreMode === "merge" ? "active" : ""} onClick={() => setRestoreMode("merge")}>Kayıtları birleştir</button>
+              </div>
+              <p className="settings-hint restore-hint">
+                {restoreMode === "replace"
+                  ? "Profil ve tüm regl kayıtları yedekteki haliyle değiştirilir."
+                  : "Mevcut profil korunur; yalnızca eksik başlangıç tarihleri eklenir."}
+              </p>
+              <button type="button" className="secondary-button full-width" onClick={restoreData} disabled={restoreSaving}>
+                {restoreSaving ? <LoaderCircle className="spin" size={17} /> : <Upload size={16} />} Yedeği geri yükle
+              </button>
+            </>
+          )}
+          {restoreError && <p className="form-error restore-message">{restoreError}</p>}
+          {restoreSuccess && <p className="form-success">{restoreSuccess}</p>}
+        </div>
         <div className="settings-divider" />
         <div className="security-section">
           <span className="eyebrow">HESAP GÜVENLİĞİ</span>
@@ -802,7 +902,7 @@ export default function App() {
       {profile && <button className="mobile-fab" onClick={() => setModalOpen(true)} aria-label="Yeni kayıt ekle"><Plus size={23} /></button>}
       {profile && modalOpen && <PeriodModal onClose={() => setModalOpen(false)} onSaved={async () => { setModalOpen(false); await loadData(); }} />}
       {profile && editingPeriod && <PeriodModal period={editingPeriod} onClose={() => setEditingPeriod(null)} onSaved={async () => { setEditingPeriod(null); await loadData(); }} />}
-      {profile && settingsOpen && <SettingsModal profile={profile} onClose={() => setSettingsOpen(false)} onSaved={async () => { setSettingsOpen(false); await loadData(); }} />}
+      {profile && settingsOpen && <SettingsModal profile={profile} onClose={() => setSettingsOpen(false)} onSaved={async () => { setSettingsOpen(false); await loadData(); }} onRestored={loadData} />}
     </div>
   );
 }

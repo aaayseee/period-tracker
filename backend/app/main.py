@@ -39,6 +39,8 @@ from .schemas import (
     ProfileUpdate,
     RecoveryCodeResult,
     RegistrationResult,
+    RestoreRequest,
+    RestoreResult,
 )
 from .services import calculate_insights, row_to_period, row_to_profile, utc_now
 
@@ -515,4 +517,109 @@ def export_data(
         exported_at=utc_now(),
         profile=row_to_profile(profile_row),
         periods=[row_to_period(row) for row in rows],
+    )
+
+
+@app.post(
+    "/api/restore",
+    response_model=RestoreResult,
+    dependencies=[Depends(require_account)],
+)
+def restore_data(
+    payload: RestoreRequest,
+    connection: sqlite3.Connection = Depends(get_connection),
+) -> RestoreResult:
+    imported_periods = 0
+    skipped_periods = 0
+    profile_restored = False
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+
+        if payload.mode == "replace":
+            profile = payload.backup.profile
+            if profile is None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Tam geri yükleme için yedekte profil bulunmalıdır.",
+                )
+
+            connection.execute("DELETE FROM periods")
+            connection.execute(
+                """
+                INSERT INTO profile (
+                    id, name, average_cycle_length, average_period_length,
+                    created_at, updated_at
+                ) VALUES (1, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    name = excluded.name,
+                    average_cycle_length = excluded.average_cycle_length,
+                    average_period_length = excluded.average_period_length,
+                    created_at = excluded.created_at,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    profile.name.strip(),
+                    profile.average_cycle_length,
+                    profile.average_period_length,
+                    profile.created_at.isoformat(),
+                    profile.updated_at.isoformat(),
+                ),
+            )
+            profile_restored = True
+
+        existing_dates = {
+            row["start_date"]
+            for row in connection.execute("SELECT start_date FROM periods").fetchall()
+        }
+
+        for period in payload.backup.periods:
+            start_date = period.start_date.isoformat()
+            if start_date in existing_dates:
+                skipped_periods += 1
+                continue
+
+            connection.execute(
+                """
+                INSERT INTO periods (
+                    start_date, end_date, flow, symptoms, notes,
+                    created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    start_date,
+                    period.end_date.isoformat() if period.end_date else None,
+                    period.flow,
+                    json.dumps(period.symptoms, ensure_ascii=False),
+                    period.notes.strip(),
+                    period.created_at.isoformat(),
+                    period.updated_at.isoformat(),
+                ),
+            )
+            existing_dates.add(start_date)
+            imported_periods += 1
+
+        total_periods = connection.execute(
+            "SELECT COUNT(*) AS count FROM periods"
+        ).fetchone()["count"]
+        connection.commit()
+    except HTTPException:
+        connection.rollback()
+        raise
+    except sqlite3.IntegrityError as exc:
+        connection.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Yedek mevcut verilerle uyumlu olmadığı için geri yüklenemedi.",
+        ) from exc
+    except Exception:
+        connection.rollback()
+        raise
+
+    return RestoreResult(
+        mode=payload.mode,
+        imported_periods=imported_periods,
+        skipped_periods=skipped_periods,
+        total_periods=total_periods,
+        profile_restored=profile_restored,
     )

@@ -115,4 +115,28 @@ class Insights(BaseModel):
 class ExportData(BaseModel):
     exported_at: datetime
     profile: Optional[Profile] = None
-    periods: List[Period]
+    periods: List[Period] = Field(max_length=5000)
+    schema_version: Literal[1] = 1
+
+
+class RestoreRequest(BaseModel):
+    backup: ExportData
+    mode: Literal["replace", "merge"] = "replace"
+
+    @model_validator(mode="after")
+    def validate_backup(self) -> "RestoreRequest":
+        if self.mode == "replace" and self.backup.profile is None:
+            raise ValueError("Tam geri yükleme için yedekte profil bulunmalıdır.")
+
+        start_dates = [period.start_date for period in self.backup.periods]
+        if len(start_dates) != len(set(start_dates)):
+            raise ValueError("Yedekte aynı başlangıç tarihine sahip birden fazla kayıt var.")
+        return self
+
+
+class RestoreResult(BaseModel):
+    mode: Literal["replace", "merge"]
+    imported_periods: int
+    skipped_periods: int
+    total_periods: int
+    profile_restored: bool

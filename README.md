@@ -19,7 +19,7 @@ Uygulama yerel kullanım için çalışan bir MVP'dir:
 - Ortalama döngü ve regl süresi hesabı
 - Sonraki regl, yumurtlama ve doğurganlık dönemi tahmini
 - Takvimde ayrı ovülasyon günü ve 7 günlük PMS penceresi
-- Takvim, geçmiş kayıtlar ve JSON yedek
+- Takvim, geçmiş kayıtlar, JSON yedek alma ve geri yükleme
 - Responsive React arayüzü
 - Manifest, ikon ve Service Worker içeren PWA kabuğu
 
@@ -184,7 +184,12 @@ Varsayılan veritabanı:
 backend/data/period_tracker.db
 ```
 
-Dashboard'daki **Yedekle** düğmesi profil ve regl kayıtlarını JSON olarak indirir. SQLite dosyasını kopyalamadan önce backend'i durdurmak güvenli bir yedek alınmasını sağlar. Şu anda JSON içe aktarma ekranı yoktur.
+Dashboard'daki **Yedekle** düğmesi profil ve regl kayıtlarını sürüm bilgili JSON dosyası olarak indirir. Geri yüklemek için **Ayarlar → Veri Yönetimi** bölümünden dosyayı seç:
+
+- **Tamamen değiştir:** Mevcut profil ve regl kayıtlarını yedekteki haliyle değiştirir.
+- **Kayıtları birleştir:** Mevcut profil ve kayıtları korur, yalnızca eksik başlangıç tarihlerini ekler.
+
+Geri yükleme hesap e-postasını, parolayı, kurtarma kodunu ve oturumları değiştirmez. SQLite dosyasını doğrudan kopyalamadan önce backend'i durdurmak güvenli bir yedek alınmasını sağlar. Ayrıntılar: [JSON yedekleme ve geri yükleme](docs/BACKUP.md).
 
 ## Proje yapısı
 
@@ -252,6 +257,7 @@ netstat -ano | Select-String ":8000|:5173"
 - [API sözleşmesi](docs/API.md)
 - [PWA ve çevrimdışı davranış](docs/PWA.md)
 - [Güvenlik modeli](docs/SECURITY.md)
+- [JSON yedekleme ve geri yükleme](docs/BACKUP.md)
 - [Aşama denetimi ve yol haritası](docs/ROADMAP.md)
 
 ## Lisans ve kullanım
