@@ -20,6 +20,7 @@ Uygulama yerel kullanım için çalışan bir MVP'dir:
 - Sonraki regl, yumurtlama ve doğurganlık dönemi tahmini
 - Takvimde ayrı ovülasyon günü ve 7 günlük PMS penceresi
 - Takvim, geçmiş kayıtlar, JSON yedek alma ve geri yükleme
+- Sürümlü, transaction destekli SQLite migration sistemi
 - Responsive React arayüzü
 - Manifest, ikon ve Service Worker içeren PWA kabuğu
 
@@ -34,6 +35,7 @@ Uygulama yerel kullanım için çalışan bir MVP'dir:
 | Backend | Python + FastAPI | REST API, doğrulama ve oturum yönetimi |
 | Veri doğrulama | Pydantic | İstek/yanıt şemaları |
 | Veritabanı | SQLite | Profil, hesap, session ve döngü kayıtları |
+| Migration | Yerel Python migration runner | Sıralı şema yükseltme, geçmiş ve rollback |
 | Test | Pytest + FastAPI TestClient | API, auth ve tahmin algoritması testleri |
 | PWA | Web App Manifest + Service Worker | Kurulabilir uygulama kabuğu |
 
@@ -110,6 +112,16 @@ Backend çalıştığında:
 - API: http://127.0.0.1:8000
 - Swagger: http://127.0.0.1:8000/docs
 - Sağlık kontrolü: http://127.0.0.1:8000/health
+
+Bekleyen veritabanı migration'ları backend başlangıcında otomatik uygulanır. Manuel durum kontrolü ve yükseltme:
+
+```powershell
+cd C:\Users\ayseu\Desktop\period-tracker\backend
+.\.venv\Scripts\python.exe -m app.migrations status
+.\.venv\Scripts\python.exe -m app.migrations upgrade
+```
+
+Migration çalıştırmadan önce önemli veriler için JSON veya SQLite dosya yedeği almak önerilir. Ayrıntılar: [Veritabanı migration sistemi](docs/MIGRATIONS.md).
 
 ### 2. Frontend bağımlılıklarını kur
 
@@ -258,6 +270,7 @@ netstat -ano | Select-String ":8000|:5173"
 - [PWA ve çevrimdışı davranış](docs/PWA.md)
 - [Güvenlik modeli](docs/SECURITY.md)
 - [JSON yedekleme ve geri yükleme](docs/BACKUP.md)
+- [Veritabanı migration sistemi](docs/MIGRATIONS.md)
 - [Aşama denetimi ve yol haritası](docs/ROADMAP.md)
 
 ## Lisans ve kullanım

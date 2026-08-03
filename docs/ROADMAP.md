@@ -19,8 +19,9 @@
 | Tarihleri kaydetme/okuma | Tamamlandı | List, create, update ve delete endpoint'leri |
 | Hesap/session | Tamamlandı | Kayıt, giriş, çıkış, session kontrolü ve korumalı veri uçları |
 | Parola değiştirme/kurtarma | Tamamlandı | Parola değişimi, hash'li kurtarma kodu, kod rotasyonu ve eski session iptali |
+| Veritabanı migration sistemi | Tamamlandı | Sıralı Python migration'ları, `schema_migrations`, otomatik başlangıç yükseltmesi ve rollback testleri |
 
-Değerlendirme: 1. aşama kişisel MVP kapsamı için doğru şekilde tamamlandı. Production büyümesi için versiyonlu migration sistemi eksik.
+Değerlendirme: 1. aşama kişisel MVP kapsamı için doğru şekilde tamamlandı. Mevcut SQLite şeması sürümlü migration sistemiyle güvenli şekilde evrilebilir.
 
 ## 2. Aşama — Tahminleme Algoritması
 
@@ -92,12 +93,11 @@ Bu nedenle doğru ifade:
 
 ### P1 — Sağlamlık
 
-1. Alembic veya eşdeğer migration sistemi
-2. Backend router'larının dosyalara ayrılması
-3. Frontend feature/component ayrımı
-4. Merkezi loglama ve hata kodları
-5. CI üzerinde test + frontend build
-6. API integration ve component test kapsamı
+1. Backend router'larının dosyalara ayrılması
+2. Frontend feature/component ayrımı
+3. Merkezi loglama ve hata kodları
+4. CI üzerinde test + frontend build
+5. API integration ve component test kapsamı
 
 ### P2 — PWA kalitesi
 

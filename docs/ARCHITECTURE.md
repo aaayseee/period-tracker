@@ -25,7 +25,8 @@ Frontend hiçbir sağlık verisini kendi kalıcı deposunun ana kaynağı olarak
 | Modül | Sorumluluk |
 |---|---|
 | `main.py` | FastAPI uygulaması, middleware ve HTTP endpoint'leri |
-| `database.py` | SQLite bağlantısı, tablo ve indekslerin idempotent kurulumu |
+| `database.py` | SQLite bağlantısı ve migration başlangıç noktası |
+| `migrations/` | Sürümlü, sıralı ve transaction'lı şema değişiklikleri |
 | `schemas.py` | Pydantic istek/yanıt modelleri ve alan doğrulaması |
 | `auth.py` | Parola hash'i, session token üretimi ve auth dependency'leri |
 | `services.py` | Satır-model dönüşümleri ve döngü tahmin algoritması |
@@ -117,7 +118,7 @@ Bu istatistiksel yaklaşım tıbbi model değildir.
 | Birden fazla backend worker | Kısmen | SQLite yazma kilitleri darboğaz olabilir |
 | Birden fazla kullanıcı | Uygun değil | Şema bilinçli olarak tek hesaplıdır |
 | Tam çevrimdışı yazma | Yok | API verileri queue edilmez veya senkronize edilmez |
-| Şema değişiklikleri | MVP düzeyi | Alembic benzeri versiyonlu migration sistemi yoktur |
+| Şema değişiklikleri | Uygun | Yerel sürümlü migration runner; uygulanan sürümler `schema_migrations` tablosunda |
 
 ## Çok kullanıcılı sisteme geçiş yolu
 
@@ -139,7 +140,7 @@ Teknik borçlar:
 
 - Backend endpoint'leri büyüdükçe router dosyalarına ayrılmalı.
 - Frontend `App.tsx` feature/component katmanlarına bölünmeli.
-- Şema değişiklikleri için migration sistemi eklenmeli.
+- PostgreSQL/SQLAlchemy geçişinde yerel runner Alembic revision geçmişine dönüştürülmeli.
 - Loglama ve merkezi hata modeli tanımlanmalı.
 - Çok kullanıcılı hedef oluşursa singleton tablo varsayımı kaldırılmalı.
 
