@@ -18,7 +18,7 @@ flowchart LR
     DB --> B[JSON / dosya yedeği]
 ```
 
-Docker kurulumunda Nginx tek dış giriş noktasıdır. Statik React build'ini sunar ve `/api` ile `/health` isteklerini Compose iç ağındaki FastAPI container'ına yönlendirir. Backend portu host makineye açılmaz; SQLite named volume üzerinde kalır.
+Yerel Docker kurulumunda Nginx hostun yalnız `127.0.0.1` arayüzüne açılır. HTTPS production katmanında Caddy, 80/443 portlarındaki tek dış giriş noktasıdır; TLS'i sonlandırır ve istekleri Compose iç ağındaki Nginx'e aktarır. Nginx statik React build'ini sunar, `/api` ile `/health` isteklerini FastAPI container'ına yönlendirir. Backend portu host makineye açılmaz; SQLite named volume üzerinde kalır.
 
 Frontend hiçbir sağlık verisini kendi kalıcı deposunun ana kaynağı olarak kullanmaz. Kaynak veri SQLite'tır. Service Worker API yanıtlarını önbelleğe almaz.
 
@@ -45,6 +45,7 @@ Frontend hiçbir sağlık verisini kendi kalıcı deposunun ana kaynağı olarak
 | `styles.css` | Responsive tasarım sistemi |
 | `public/sw.js` | Uygulama kabuğu için ağ-öncelikli cache |
 | `nginx.conf` | Docker ortamında statik dosya sunumu, SPA fallback ve backend reverse proxy |
+| `deploy/Caddyfile` | Otomatik HTTPS, HTTP yönlendirmesi, sıkıştırma ve production güvenlik header'ları |
 
 `App.tsx` bir sonraki büyüme sınırına yaklaşmaktadır. Yeni ekranlar eklendiğinde `features/auth`, `features/calendar`, `features/periods` ve `components` klasörlerine ayrılması önerilir.
 

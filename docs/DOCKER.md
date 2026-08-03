@@ -162,6 +162,8 @@ Bu Compose kurulumu yerelde HTTP kullanır. `localhost` tarayıcılar tarafında
 
 Gerçek telefon kurulumu için sonraki aşamada HTTPS, gerçek domain ve `PERIOD_TRACKER_SECURE_COOKIE=true` yapılandırılmalıdır.
 
+Hazır production Compose ve Caddy yapılandırmasının kullanımı [HTTPS deployment rehberinde](DEPLOYMENT.md) açıklanır.
+
 ## Sorun giderme
 
 ### Docker API bağlantı hatası

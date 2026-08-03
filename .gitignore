@@ -6,5 +6,6 @@ backend/data/*.db
 frontend/node_modules/
 frontend/dist/
 .env
+.env.production
+.env.*.local
 .DS_Store
-

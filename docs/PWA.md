@@ -96,6 +96,8 @@ Service Worker ve kurulabilirlik için:
 - Telefon veya başka cihaz üzerinden erişimde HTTPS gerekir.
 - Yerel ağdaki düz `http://192.168.x.x` adresi PWA özelliklerini tam sağlamaz.
 
+Domain, DNS, Caddy ve production Compose adımları için [HTTPS deployment rehberine](DEPLOYMENT.md) bak.
+
 ## Production için eksikler
 
 - 192x192 ve 512x512 PNG ikonların eklenmesi
@@ -104,7 +106,7 @@ Service Worker ve kurulabilirlik için:
 - Offline fallback ekranı
 - Güncelleme bulunduğunda kullanıcıya yenileme bildirimi
 - Lighthouse PWA denetimi
-- HTTPS deployment ve güvenlik header'ları
+- Gerçek domain/VPS üzerinde HTTPS ve telefon kurulum doğrulaması
 - İstenirse şifreli IndexedDB + offline mutation queue + çatışma çözümü
 
 ## Tam offline-first tasarım önerisi

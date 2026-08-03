@@ -353,3 +353,14 @@ def test_json_backup_restore_replace_and_merge(tmp_path):
             "/api/restore",
             json={"backup": backup, "mode": "replace"},
         ).status_code == 401
+
+
+def test_secure_cookie_can_be_enabled_for_https(tmp_path, monkeypatch):
+    monkeypatch.setenv("PERIOD_TRACKER_SECURE_COOKIE", "true")
+    with build_client(tmp_path) as client:
+        response = register(client)
+        assert response.status_code == 200
+        cookie_header = response.headers["set-cookie"].lower()
+        assert "httponly" in cookie_header
+        assert "samesite=strict" in cookie_header
+        assert "secure" in cookie_header

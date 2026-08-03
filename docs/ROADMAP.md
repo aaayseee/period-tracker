@@ -65,11 +65,12 @@ Değerlendirme: 3. aşama çalışır durumdadır. UI component testleri ve eri�
 | Web App Manifest | Tamamlandı | Ad, kısa ad, tema, standalone, dil ve ikon |
 | Service Worker | MVP tamamlandı | Uygulama kabuğunda network-first cache |
 | İkon ve uygulama adı | MVP tamamlandı | SVG ikon mevcut; production için PNG boyutları eksik |
-| Telefona kurulum | Kısmi | HTTPS deployment yapıldığında kurulabilir; deployment henüz yok |
+| Telefona kurulum | Kısmi | HTTPS altyapısı hazır; gerçek domain yayını ve fiziksel telefon testi bekliyor |
 | Çevrimdışı arayüz | MVP tamamlandı | Daha önce yüklenen shell açılabilir |
 | Çevrimdışı veri okuma/yazma | Planlandı | API cache, IndexedDB queue ve sync yok |
 | Lighthouse/installability doğrulaması | Planlandı | Gerçek HTTPS ortamında yapılmalı |
 | Docker ile kurulum | Tamamlandı | Multi-stage frontend, non-root backend, Nginx reverse proxy, healthcheck ve kalıcı named volume |
+| HTTPS deployment | Kısmi | Caddy production katmanı, Secure cookie/CORS ve yerel TLS testi tamam; gerçek domain/VPS yayını için dış altyapı bilgileri gerekli |
 
 Değerlendirme: Manifest ve Service Worker doğru temel parçaları sağlar; “tam offline-first ve production-ready PWA” aşaması henüz tamamlanmış sayılmaz.
 

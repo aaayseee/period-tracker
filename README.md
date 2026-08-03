@@ -22,6 +22,7 @@ Uygulama yerel kullanım için çalışan bir MVP'dir:
 - Takvim, geçmiş kayıtlar, JSON yedek alma ve geri yükleme
 - Sürümlü, transaction destekli SQLite migration sistemi
 - Docker Compose ile tek komutluk, kalıcı verili kurulum
+- Caddy ile otomatik sertifika yenilemeli HTTPS deployment altyapısı
 - Responsive React arayüzü
 - Manifest, ikon ve Service Worker içeren PWA kabuğu
 
@@ -38,6 +39,7 @@ Uygulama yerel kullanım için çalışan bir MVP'dir:
 | Veritabanı | SQLite | Profil, hesap, session ve döngü kayıtları |
 | Migration | Yerel Python migration runner | Sıralı şema yükseltme, geçmiş ve rollback |
 | Container | Docker Compose + Nginx | Production build, reverse proxy ve kalıcı SQLite volume |
+| HTTPS edge | Caddy 2 | TLS sertifikası, HTTP yönlendirmesi ve güvenlik header'ları |
 | Test | Pytest + FastAPI TestClient | API, auth ve tahmin algoritması testleri |
 | PWA | Web App Manifest + Service Worker | Kurulabilir uygulama kabuğu |
 
@@ -81,6 +83,15 @@ docker compose down
 ```
 
 `docker compose down` container'ları kapatır fakat veriyi korur. **`docker compose down -v` volume'ü ve tüm uygulama verilerini siler.** Ayrıntılı kullanım ve sorun giderme: [Docker kurulumu](docs/DOCKER.md).
+
+Gerçek domain üzerinden HTTPS yayını için `.env.production.example` dosyasını doldurup production Compose katmanını kullan:
+
+```powershell
+Copy-Item .env.production.example .env.production
+docker compose --env-file .env.production -f compose.yaml -f compose.production.yaml up --build -d
+```
+
+Domain DNS kayıtları ile sunucu/VPS hazırlığı dahil tam süreç: [HTTPS deployment](docs/DEPLOYMENT.md).
 
 ## İlk kurulum
 
@@ -251,6 +262,9 @@ period-tracker/
 │   ├── nginx.conf
 │   └── package.json
 ├── compose.yaml
+├── compose.production.yaml
+├── deploy/
+│   └── Caddyfile
 └── docs/
 ```
 
@@ -303,6 +317,7 @@ netstat -ano | Select-String ":8000|:5173"
 - [JSON yedekleme ve geri yükleme](docs/BACKUP.md)
 - [Veritabanı migration sistemi](docs/MIGRATIONS.md)
 - [Docker kurulumu](docs/DOCKER.md)
+- [HTTPS deployment](docs/DEPLOYMENT.md)
 - [Aşama denetimi ve yol haritası](docs/ROADMAP.md)
 
 ## Lisans ve kullanım

@@ -1,0 +1,28 @@
+services:
+  backend:
+    environment:
+      PERIOD_TRACKER_SECURE_COOKIE: "true"
+      PERIOD_TRACKER_CORS_ORIGINS: "https://${LUNA_DOMAIN:?LUNA_DOMAIN must be set}"
+
+  caddy:
+    image: caddy:2.11.4-alpine
+    restart: unless-stopped
+    init: true
+    depends_on:
+      frontend:
+        condition: service_healthy
+    environment:
+      LUNA_DOMAIN: "${LUNA_DOMAIN:?LUNA_DOMAIN must be set}"
+      ACME_EMAIL: "${ACME_EMAIL:?ACME_EMAIL must be set}"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:

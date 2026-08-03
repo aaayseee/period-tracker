@@ -89,10 +89,10 @@ Mevcut sürüm şu ortamı hedefler:
 
 ## Production kontrol listesi
 
-- HTTPS zorunlu kıl
-- `PERIOD_TRACKER_SECURE_COOKIE=true` ayarla
-- CORS origin listesini gerçek domain ile sınırla
-- Reverse proxy üzerinde HSTS, CSP, X-Content-Type-Options ve Referrer-Policy ekle
+- HTTPS zorunlu kıl — production Caddy katmanında yapılandırıldı; gerçek domain yayını bekliyor
+- `PERIOD_TRACKER_SECURE_COOKIE=true` ayarla — production Compose katmanında zorunlu
+- CORS origin listesini gerçek domain ile sınırla — `LUNA_DOMAIN` üzerinden ayarlanıyor
+- Reverse proxy üzerinde HSTS, CSP, X-Content-Type-Options ve Referrer-Policy ekle — Caddyfile içinde yapılandırıldı
 - Login rate limiting ve geçici hesap kilidi ekle
 - Parola sıfırlama ve e-posta doğrulama tasarla
 - SQLite/veritabanı dosyasını şifreli diskte tut
