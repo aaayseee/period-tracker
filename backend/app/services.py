@@ -37,7 +37,7 @@ def calculate_insights(
     period_lengths = [
         (item.end_date - item.start_date).days + 1
         for item in ordered
-        if item.end_date is not None
+        if item.end_date is not None and item.notes != "Onboarding setup"
     ]
 
     average_cycle = (

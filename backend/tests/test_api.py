@@ -70,7 +70,7 @@ def test_period_crud_and_insights(tmp_path):
         assert response.status_code == 200
         payload = response.json()
         assert payload["average_cycle_length"] == 28
-        assert payload["average_period_length"] == 5
+        assert payload["average_period_length"] == 6
         assert payload["next_period_start"] == "2026-06-26"
         assert payload["days_until_next_period"] == 16
 
@@ -129,9 +129,9 @@ def test_register_logout_and_returning_login(tmp_path):
         insights = client.get(
             "/api/insights", params={"today": "2026-07-20"}
         ).json()
-        assert insights["average_cycle_length"] == 31
-        assert insights["average_period_length"] == 6
-        assert insights["next_period_start"] == "2026-08-10"
+        assert insights["average_cycle_length"] == 30
+        assert insights["average_period_length"] == 5
+        assert insights["next_period_start"] == "2026-08-09"
 
         assert client.post("/api/auth/logout").status_code == 204
         assert client.get("/api/profile").status_code == 401
@@ -148,7 +148,7 @@ def test_register_logout_and_returning_login(tmp_path):
             },
         )
         assert login.status_code == 200
-        assert client.get("/api/profile").json()["name"] == "Ayse"
+        assert client.get("/api/profile").json()["name"] == "Ayse Luna"
         assert len(client.get("/api/periods").json()) == 1
 
 

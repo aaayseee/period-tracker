@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   CalendarDays,
+  Check,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -11,7 +12,9 @@ import {
   LoaderCircle,
   LockKeyhole,
   MoonStar,
+  Pencil,
   Plus,
+  Settings,
   ShieldCheck,
   Sparkles,
   Trash2,
@@ -26,7 +29,8 @@ import type {
   Insights,
   Period,
   PeriodPayload,
-  Profile
+  Profile,
+  ProfileUpdatePayload
 } from "./types";
 
 const MONTHS = [
@@ -304,9 +308,21 @@ function Calendar({ periods, insights }: { periods: Period[]; insights: Insights
   );
 }
 
-function AddPeriodModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+function PeriodModal({
+  period,
+  onClose,
+  onSaved
+}: {
+  period?: Period;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const [form, setForm] = useState<PeriodPayload>({
-    start_date: todayIso(), end_date: null, flow: "medium", symptoms: [], notes: ""
+    start_date: period?.start_date ?? todayIso(),
+    end_date: period?.end_date ?? null,
+    flow: period?.flow ?? "medium",
+    symptoms: period?.symptoms ?? [],
+    notes: period?.notes ?? ""
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -323,7 +339,11 @@ function AddPeriodModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
     setSaving(true);
     setError("");
     try {
-      await api.createPeriod(form);
+      if (period) {
+        await api.updatePeriod(period.id, form);
+      } else {
+        await api.createPeriod(form);
+      }
       onSaved();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Kayıt eklenemedi.");
@@ -335,7 +355,7 @@ function AddPeriodModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <div className="modal-header">
-          <div><span className="eyebrow">YENİ KAYIT</span><h2 id="modal-title">Regl bilgilerini ekle</h2></div>
+          <div><span className="eyebrow">{period ? "KAYDI DÜZENLE" : "YENİ KAYIT"}</span><h2 id="modal-title">{period ? "Regl bilgilerini güncelle" : "Regl bilgilerini ekle"}</h2></div>
           <button className="icon-button" onClick={onClose} aria-label="Kapat"><X size={20} /></button>
         </div>
         <form onSubmit={submit}>
@@ -362,7 +382,73 @@ function AddPeriodModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
           <label>Not<textarea placeholder="Bugün nasıl hissediyorsun?" rows={3} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></label>
           {error && <p className="form-error">{error}</p>}
           <button className="primary-button full-width" type="submit" disabled={saving}>
-            {saving ? <LoaderCircle className="spin" size={18} /> : <Plus size={18} />} Kaydı ekle
+            {saving ? <LoaderCircle className="spin" size={18} /> : period ? <Check size={18} /> : <Plus size={18} />} {period ? "Değişiklikleri kaydet" : "Kaydı ekle"}
+          </button>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function SettingsModal({
+  profile,
+  onClose,
+  onSaved
+}: {
+  profile: Profile;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
+  const [form, setForm] = useState<ProfileUpdatePayload>({
+    name: profile.name,
+    average_cycle_length: profile.average_cycle_length,
+    average_period_length: profile.average_period_length
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    try {
+      await api.updateProfile(form);
+      await onSaved();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Ayarlar kaydedilemedi.");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <section className="modal settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <div className="modal-header">
+          <div><span className="eyebrow">KİŞİSEL AYARLAR</span><h2 id="settings-title">Profilini güncelle</h2></div>
+          <button className="icon-button" onClick={onClose} aria-label="Kapat"><X size={20} /></button>
+        </div>
+        <form onSubmit={submit}>
+          <label>İsmin<input required maxLength={60} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
+          <div className="onboarding-number-grid">
+            <label>
+              Ortalama döngün
+              <div className="number-input">
+                <input required type="number" min={15} max={60} value={form.average_cycle_length} onChange={(event) => setForm({ ...form, average_cycle_length: Number(event.target.value) })} />
+                <span>gün</span>
+              </div>
+            </label>
+            <label>
+              Ortalama regl süren
+              <div className="number-input">
+                <input required type="number" min={1} max={15} value={form.average_period_length} onChange={(event) => setForm({ ...form, average_period_length: Number(event.target.value) })} />
+                <span>gün</span>
+              </div>
+            </label>
+          </div>
+          <p className="settings-hint">Bu değerler, gerçek geçmiş kayıtların oluşana kadar tahminlerde başlangıç değeri olarak kullanılır.</p>
+          {error && <p className="form-error">{error}</p>}
+          <button className="primary-button full-width" type="submit" disabled={saving}>
+            {saving ? <LoaderCircle className="spin" size={18} /> : <Check size={18} />} Ayarları kaydet
           </button>
         </form>
       </section>
@@ -378,6 +464,10 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingPeriod, setEditingPeriod] = useState<Period | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [quickSaving, setQuickSaving] = useState(false);
+  const [quickError, setQuickError] = useState("");
 
   const loadData = useCallback(async () => {
     setError("");
@@ -407,6 +497,37 @@ export default function App() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  const activePeriod = periods.find((period) => period.end_date === null) ?? null;
+
+  const quickPeriodAction = async () => {
+    setQuickSaving(true);
+    setQuickError("");
+    try {
+      if (activePeriod) {
+        await api.updatePeriod(activePeriod.id, {
+          start_date: activePeriod.start_date,
+          end_date: todayIso(),
+          flow: activePeriod.flow,
+          symptoms: activePeriod.symptoms,
+          notes: activePeriod.notes
+        });
+      } else {
+        await api.createPeriod({
+          start_date: todayIso(),
+          end_date: null,
+          flow: "medium",
+          symptoms: [],
+          notes: ""
+        });
+      }
+      await loadData();
+    } catch (caught) {
+      setQuickError(caught instanceof Error ? caught.message : "İşlem tamamlanamadı.");
+    } finally {
+      setQuickSaving(false);
+    }
+  };
+
   const logout = async () => {
     await api.logout();
     setSession(null);
@@ -414,6 +535,8 @@ export default function App() {
     setPeriods([]);
     setInsights(null);
     setModalOpen(false);
+    setEditingPeriod(null);
+    setSettingsOpen(false);
   };
 
   const removePeriod = async (period: Period) => {
@@ -437,6 +560,7 @@ export default function App() {
       <header className="topbar">
         <a className="brand" href="#top" aria-label="Luna ana sayfa"><span className="brand-icon"><MoonStar size={20} /></span><span>Luna</span></a>
         <div className="privacy-pill" title={session?.email}><LockKeyhole size={14} /> {profile ? profile.name + " · özel oturum" : "Verilerin sana özel"}</div>
+        {profile && <button className="settings-button" onClick={() => setSettingsOpen(true)}><Settings size={15} /> Ayarlar</button>}
         {profile && <button className="logout-button" onClick={logout}><LogOut size={15} /> Çıkış</button>}
         {profile && <button className="primary-button desktop-add" onClick={() => setModalOpen(true)}><Plus size={18} /> Yeni kayıt</button>}
       </header>
@@ -455,6 +579,15 @@ export default function App() {
                 <span className="eyebrow"><Sparkles size={13} /> BUGÜNÜN ÖZETİ</span>
                 <h1>Merhaba {profile.name}, <em>kendine iyi bak.</em></h1>
                 <p>Döngünü kendi ritminde, sakin ve güvenli bir alanda takip et.</p>
+                <div className="hero-actions">
+                  <button className={activePeriod ? "quick-period-button active" : "quick-period-button"} onClick={quickPeriodAction} disabled={quickSaving}>
+                    {quickSaving ? <LoaderCircle className="spin" size={17} /> : activePeriod ? <Check size={17} /> : <Droplets size={17} />}
+                    {activePeriod ? "Reglim bitti" : "Reglim başladı"}
+                  </button>
+                  <button className="secondary-button" onClick={() => setModalOpen(true)}><Plus size={16} /> Detaylı kayıt</button>
+                </div>
+                {activePeriod && <span className="active-period-note">{formatDate(activePeriod.start_date)} tarihinde başlayan aktif kayıt var.</span>}
+                {quickError && <span className="quick-error">{quickError}</span>}
               </div>
               <div className="countdown-card">
                 <div className="orb"><span>{insights?.days_until_next_period ?? "—"}</span><small>GÜN</small></div>
@@ -480,8 +613,11 @@ export default function App() {
                       {periods.slice(0, 5).map((period) => (
                         <article className="record" key={period.id}>
                           <span className="record-mark" />
-                          <div><strong>{formatDate(period.start_date)}{period.end_date ? ` – ${formatDate(period.end_date)}` : ""}</strong><small>{period.symptoms.length ? period.symptoms.join(" · ") : "Belirti eklenmedi"}</small></div>
-                          <button className="delete-button" onClick={() => removePeriod(period)} aria-label="Kaydı sil"><Trash2 size={16} /></button>
+                          <div className="record-content"><strong>{formatDate(period.start_date)}{period.end_date ? ` – ${formatDate(period.end_date)}` : " – devam ediyor"}</strong><small>{period.symptoms.length ? period.symptoms.join(" · ") : "Belirti eklenmedi"}</small></div>
+                          <div className="record-actions">
+                            <button className="edit-button" onClick={() => setEditingPeriod(period)} aria-label="Kaydı düzenle"><Pencil size={15} /></button>
+                            <button className="delete-button" onClick={() => removePeriod(period)} aria-label="Kaydı sil"><Trash2 size={16} /></button>
+                          </div>
                         </article>
                       ))}
                     </div>
@@ -498,7 +634,9 @@ export default function App() {
       </main>
 
       {profile && <button className="mobile-fab" onClick={() => setModalOpen(true)} aria-label="Yeni kayıt ekle"><Plus size={23} /></button>}
-      {profile && modalOpen && <AddPeriodModal onClose={() => setModalOpen(false)} onSaved={async () => { setModalOpen(false); await loadData(); }} />}
+      {profile && modalOpen && <PeriodModal onClose={() => setModalOpen(false)} onSaved={async () => { setModalOpen(false); await loadData(); }} />}
+      {profile && editingPeriod && <PeriodModal period={editingPeriod} onClose={() => setEditingPeriod(null)} onSaved={async () => { setEditingPeriod(null); await loadData(); }} />}
+      {profile && settingsOpen && <SettingsModal profile={profile} onClose={() => setSettingsOpen(false)} onSaved={async () => { setSettingsOpen(false); await loadData(); }} />}
     </div>
   );
 }
