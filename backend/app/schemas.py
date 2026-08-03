@@ -53,6 +53,7 @@ class ProfileUpdate(BaseModel):
 class AccountRegister(ProfileSetup):
     email: str = Field(min_length=5, max_length=254)
     password: str = Field(min_length=8, max_length=128)
+    invite_code: str = Field(min_length=24, max_length=40)
 
 
 class AccountLogin(BaseModel):
@@ -62,6 +63,7 @@ class AccountLogin(BaseModel):
 
 class AuthSession(BaseModel):
     email: str
+    role: Literal["admin", "user"]
 
 
 class RegistrationResult(AuthSession):
@@ -85,6 +87,37 @@ class RecoveryCodeResult(BaseModel):
 
 class PasswordRecoveryResult(AuthSession):
     recovery_code: str
+
+
+class AdminInviteCreate(BaseModel):
+    expiry_days: int = Field(default=7, ge=1, le=365)
+    max_uses: int = Field(default=1, ge=1, le=100)
+
+
+class AdminInvite(BaseModel):
+    id: int
+    expires_at: datetime
+    max_uses: int
+    use_count: int
+    revoked_at: Optional[datetime]
+    created_at: datetime
+
+
+class AdminInviteCreated(AdminInvite):
+    invite_code: str
+
+
+class AdminUser(BaseModel):
+    id: int
+    email: str
+    role: Literal["admin", "user"]
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class AdminUserStatusUpdate(BaseModel):
+    is_active: bool
 
 
 class Profile(BaseModel):

@@ -27,6 +27,8 @@ import { api } from "./api";
 import type {
   AccountLoginPayload,
   AccountRegisterPayload,
+  AdminInvite,
+  AdminUser,
   AuthSession,
   BackupData,
   FlowLevel,
@@ -73,6 +75,7 @@ function Onboarding({ onComplete }: { onComplete: () => Promise<void> }) {
     name: "",
     email: "",
     password: "",
+    invite_code: "",
     last_period_start: todayIso(),
     average_cycle_length: 28,
     average_period_length: 5
@@ -214,6 +217,17 @@ function Onboarding({ onComplete }: { onComplete: () => Promise<void> }) {
                 />
               </label>
             </div>
+            <label>
+              Davet kodu
+              <input
+                required
+                autoComplete="off"
+                placeholder="XXXXXX-XXXXXX-XXXXXX-XXXXXX"
+                value={form.invite_code}
+                onChange={(event) => setForm({ ...form, invite_code: event.target.value })}
+              />
+              <small>Bu kodu uygulama yöneticisinden alabilirsin.</small>
+            </label>
             <label>
               Son regl başlangıç tarihin
               <input
@@ -722,6 +736,188 @@ function SettingsModal({
   );
 }
 
+function AdminDashboard({ session, onLogout }: { session: AuthSession; onLogout: () => Promise<void> }) {
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [invites, setInvites] = useState<AdminInvite[]>([]);
+  const [expiryDays, setExpiryDays] = useState(7);
+  const [maxUses, setMaxUses] = useState(1);
+  const [createdCode, setCreatedCode] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [adminError, setAdminError] = useState("");
+
+  const loadAdminData = useCallback(async () => {
+    const [userData, inviteData] = await Promise.all([
+      api.getAdminUsers(),
+      api.getAdminInvites()
+    ]);
+    setUsers(userData);
+    setInvites(inviteData);
+  }, []);
+
+  useEffect(() => {
+    loadAdminData().catch((caught) => {
+      setAdminError(caught instanceof Error ? caught.message : "Yönetim verileri yüklenemedi.");
+    });
+  }, [loadAdminData]);
+
+  const createInvite = async (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setAdminError("");
+    setMessage("");
+    try {
+      const result = await api.createAdminInvite({ expiry_days: expiryDays, max_uses: maxUses });
+      setCreatedCode(result.invite_code);
+      setMessage("Davet oluşturuldu. Kod yalnızca bu ekranda bir kez gösterilir.");
+      await loadAdminData();
+    } catch (caught) {
+      setAdminError(caught instanceof Error ? caught.message : "Davet oluşturulamadı.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleUser = async (user: AdminUser) => {
+    setBusy(true);
+    setAdminError("");
+    try {
+      await api.updateAdminUser(user.id, !user.is_active);
+      await loadAdminData();
+    } catch (caught) {
+      setAdminError(caught instanceof Error ? caught.message : "Kullanıcı güncellenemedi.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const revokeInvite = async (invite: AdminInvite) => {
+    setBusy(true);
+    setAdminError("");
+    try {
+      await api.revokeAdminInvite(invite.id);
+      await loadAdminData();
+    } catch (caught) {
+      setAdminError(caught instanceof Error ? caught.message : "Davet iptal edilemedi.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const changeAdminPassword = async (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setAdminError("");
+    setMessage("");
+    try {
+      await api.changePassword({ current_password: currentPassword, new_password: newPassword });
+      setCurrentPassword("");
+      setNewPassword("");
+      setMessage("Yönetici parolası değiştirildi.");
+    } catch (caught) {
+      setAdminError(caught instanceof Error ? caught.message : "Parola değiştirilemedi.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const createRecoveryCode = async () => {
+    setBusy(true);
+    setAdminError("");
+    try {
+      const result = await api.rotateRecoveryCode();
+      setRecoveryCode(result.recovery_code);
+      setMessage("Yeni kurtarma kodunu güvenli bir yerde sakla.");
+    } catch (caught) {
+      setAdminError(caught instanceof Error ? caught.message : "Kurtarma kodu oluşturulamadı.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const userAccounts = users.filter((user) => user.role === "user");
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-heading">
+        <div>
+          <span className="eyebrow"><ShieldCheck size={14} /> YÖNETİCİ ALANI</span>
+          <h1>Kullanıcı ve davet yönetimi</h1>
+          <p>{session.email} · Sağlık verileri bu panelde gösterilmez.</p>
+        </div>
+        <button className="logout-button" onClick={onLogout}><LogOut size={15} /> Çıkış</button>
+      </div>
+
+      {adminError && <p className="form-error admin-message">{adminError}</p>}
+      {message && <p className="form-success admin-message">{message}</p>}
+
+      <div className="admin-grid">
+        <section className="panel admin-card">
+          <span className="eyebrow">YENİ DAVET</span>
+          <h2>Kayıt kodu oluştur</h2>
+          <form onSubmit={createInvite}>
+            <div className="form-row">
+              <label>Süre (gün)<input type="number" min={1} max={365} value={expiryDays} onChange={(event) => setExpiryDays(Number(event.target.value))} /></label>
+              <label>Kullanım hakkı<input type="number" min={1} max={100} value={maxUses} onChange={(event) => setMaxUses(Number(event.target.value))} /></label>
+            </div>
+            <button className="primary-button full-width" disabled={busy}><Plus size={16} /> Davet oluştur</button>
+          </form>
+          {createdCode && (
+            <div className="admin-code">
+              <code className="recovery-code compact">{createdCode}</code>
+              <button className="secondary-button full-width" onClick={async () => navigator.clipboard.writeText(createdCode)}><Copy size={15} /> Kodu kopyala</button>
+            </div>
+          )}
+        </section>
+
+        <section className="panel admin-card">
+          <span className="eyebrow">HESAP GÜVENLİĞİ</span>
+          <h2>Admin hesabı</h2>
+          <form onSubmit={changeAdminPassword}>
+            <label>Mevcut parola<input required type="password" minLength={8} value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} /></label>
+            <label>Yeni parola<input required type="password" minLength={8} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} /></label>
+            <button className="secondary-button full-width" disabled={busy}><KeyRound size={15} /> Parolayı değiştir</button>
+          </form>
+          {recoveryCode && <code className="recovery-code compact">{recoveryCode}</code>}
+          <button className="secondary-button full-width" onClick={createRecoveryCode} disabled={busy}><ShieldCheck size={15} /> Yeni kurtarma kodu</button>
+        </section>
+      </div>
+
+      <section className="panel admin-card admin-wide">
+        <div className="section-heading"><div><span className="eyebrow">KULLANICILAR</span><h2>{userAccounts.length} kişisel hesap</h2></div></div>
+        <div className="admin-list">
+          {userAccounts.map((user) => (
+            <article key={user.id} className="admin-row">
+              <div><strong>{user.email}</strong><small>Oluşturulma: {new Date(user.created_at).toLocaleDateString("tr-TR")}</small></div>
+              <button className={user.is_active ? "secondary-button" : "primary-button"} onClick={() => toggleUser(user)} disabled={busy}>{user.is_active ? "Devre dışı bırak" : "Etkinleştir"}</button>
+            </article>
+          ))}
+          {!userAccounts.length && <p className="settings-hint">Henüz kişisel kullanıcı hesabı yok.</p>}
+        </div>
+      </section>
+
+      <section className="panel admin-card admin-wide">
+        <div className="section-heading"><div><span className="eyebrow">DAVETLER</span><h2>Davet geçmişi</h2></div></div>
+        <div className="admin-list">
+          {invites.map((invite) => {
+            const unavailable = Boolean(invite.revoked_at) || invite.use_count >= invite.max_uses || new Date(invite.expires_at) <= new Date();
+            return (
+              <article key={invite.id} className="admin-row">
+                <div><strong>Davet #{invite.id} · {invite.use_count}/{invite.max_uses} kullanım</strong><small>Son tarih: {new Date(invite.expires_at).toLocaleString("tr-TR")}{invite.revoked_at ? " · İptal edildi" : ""}</small></div>
+                <button className="secondary-button" onClick={() => revokeInvite(invite)} disabled={busy || unavailable}>İptal et</button>
+              </article>
+            );
+          })}
+          {!invites.length && <p className="settings-hint">Henüz davet oluşturulmadı.</p>}
+        </div>
+      </section>
+    </section>
+  );
+}
+
 export default function App() {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -741,6 +937,12 @@ export default function App() {
       const sessionData = await api.getSession();
       setSession(sessionData);
       if (!sessionData) {
+        setProfile(null);
+        setPeriods([]);
+        setInsights(null);
+        return;
+      }
+      if (sessionData.role === "admin") {
         setProfile(null);
         setPeriods([]);
         setInsights(null);
@@ -836,6 +1038,8 @@ export default function App() {
           <div className="loading-state"><LoaderCircle className="spin" /><span>Döngün hazırlanıyor…</span></div>
         ) : error ? (
           <div className="empty-state"><MoonStar size={32} /><h2>API bağlantısı kurulamadı</h2><p>{error} Backend'in çalıştığından emin olup tekrar deneyebilirsin.</p><button className="primary-button" onClick={loadData}>Tekrar dene</button></div>
+        ) : session?.role === "admin" ? (
+          <AdminDashboard session={session} onLogout={logout} />
         ) : !profile ? (
           <Onboarding onComplete={loadData} />
         ) : (

@@ -1,6 +1,10 @@
 import type {
   AccountLoginPayload,
   AccountRegisterPayload,
+  AdminInvite,
+  AdminInviteCreated,
+  AdminInviteCreatePayload,
+  AdminUser,
   AuthSession,
   BackupData,
   Insights,
@@ -81,6 +85,20 @@ export const api = {
   rotateRecoveryCode: () =>
     request<RecoveryCodeResult>("/api/auth/recovery-code", { method: "POST" }),
   logout: () => request<void>("/api/auth/logout", { method: "POST" }),
+  getAdminUsers: () => request<AdminUser[]>("/api/admin/users"),
+  updateAdminUser: (id: number, isActive: boolean) =>
+    request<AdminUser>(`/api/admin/users/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ is_active: isActive })
+    }),
+  getAdminInvites: () => request<AdminInvite[]>("/api/admin/invites"),
+  createAdminInvite: (payload: AdminInviteCreatePayload) =>
+    request<AdminInviteCreated>("/api/admin/invites", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
+  revokeAdminInvite: (id: number) =>
+    request<AdminInvite>(`/api/admin/invites/${id}/revoke`, { method: "POST" }),
   getProfile: () => request<Profile | null>("/api/profile"),
   updateProfile: (payload: ProfileUpdatePayload) =>
     request<Profile>("/api/profile", {

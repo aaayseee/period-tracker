@@ -1,6 +1,6 @@
 # Luna — Kişisel Döngü Takibi
 
-Luna; store zorunluluğu olmadan tarayıcıdan kullanılabilen ve telefona PWA olarak kurulabilen, tek kişilik döngü takip uygulamasıdır. Regl kayıtları, belirtiler, kişisel notlar ve hesap bilgileri kendi SQLite veritabanında tutulur.
+Luna; store zorunluluğu olmadan tarayıcıdan kullanılabilen, telefona PWA olarak kurulabilen ve davet ettiğin kişilerin ayrı hesaplarla kullanabildiği kendi kendine barındırılan bir döngü takip uygulamasıdır. Her kullanıcının regl kayıtları, belirtileri, kişisel notları ve tahminleri aynı SQLite veritabanında hesap bazında kesin olarak ayrılır.
 
 > Tahminler yalnızca geçmiş tarihlerden üretilen yaklaşık bilgilerdir. Tıbbi tanı veya doğum kontrol yöntemi değildir.
 
@@ -8,7 +8,9 @@ Luna; store zorunluluğu olmadan tarayıcıdan kullanılabilen ve telefona PWA o
 
 Uygulama yerel kullanım için çalışan bir MVP'dir:
 
-- E-posta/parola ile hesap oluşturma ve giriş
+- Davet koduyla e-posta/parola hesabı oluşturma ve mevcut hesaba giriş
+- Ayrı yönetici hesabı, davet üretme/iptal etme ve kullanıcı etkinleştirme/pasifleştirme paneli
+- Profil, regl, PMS, ovülasyon, yedek ve tahmin verilerinde hesap bazlı veri izolasyonu
 - Parola değiştirme ve tek kullanımlık gösterilen kurtarma kodu
 - PBKDF2 ile tuzlanmış parola hash'i
 - 30 günlük, sunucu tarafında doğrulanan HttpOnly oturum
@@ -73,6 +75,14 @@ Docker Desktop'ın çalıştığından emin ol, repository kökünde şu komutu 
 ```powershell
 docker compose up --build -d
 ```
+
+İlk yönetici hesabını ayrı olarak oluştur. Bu hesap yalnızca kullanıcı ve davet yönetimi içindir; kişisel döngü takibi için kullanılmaz:
+
+```powershell
+docker compose exec backend python -m app.admin_cli create
+```
+
+Komut e-posta ve parolayı etkileşimli olarak sorar ve kurtarma kodunu yalnızca bir kez gösterir. Ardından `http://localhost:8080` adresinde admin hesabıyla giriş yap, davet kodu üret ve kişisel hesabını bu kodla oluştur. Arkadaşlarına da ayrı davet kodları gönderebilirsin.
 
 Ardından uygulamayı http://localhost:8080 adresinde aç. SQLite verisi `luna-period-tracker_luna-data` named volume'ünde kalıcı tutulur.
 
@@ -158,6 +168,12 @@ cd C:\Users\ayseu\Desktop\period-tracker\backend
 .\.venv\Scripts\python.exe -m app.migrations upgrade
 ```
 
+Yerel geliştirmede ilk yönetici hesabını oluşturmak için backend klasöründe:
+
+```powershell
+.\.venv\Scripts\python.exe -m app.admin_cli create
+```
+
 Migration çalıştırmadan önce önemli veriler için JSON veya SQLite dosya yedeği almak önerilir. Ayrıntılar: [Veritabanı migration sistemi](docs/MIGRATIONS.md).
 
 ### 2. Frontend bağımlılıklarını kur
@@ -174,13 +190,13 @@ Uygulama http://localhost:5173 adresinde açılır. Vite, `/api` isteklerini oto
 
 ## İlk kullanım
 
-1. http://localhost:5173 adresini aç.
-2. Yeni kullanıcıysan **İlk kez kullanıyorum** bölümünü seç.
-3. İsim, e-posta, en az 8 karakterlik parola, son regl tarihi ve ortalamaları gir.
+1. Admin hesabıyla giriş yap ve **Davet oluştur** bölümünden bir kod üret.
+2. Admin hesabından çık. Kişisel takip hesabı admin hesabından ayrı olmalıdır.
+3. **İlk kez kullanıyorum** bölümünde isim, e-posta, parola, davet kodu, son regl tarihi ve ortalamaları gir.
 4. Gösterilen kurtarma kodunu parola yöneticisi gibi güvenli bir yerde sakla.
 5. Daha önce hesap oluşturduysan **Hesabım var** bölümünden giriş yap; parolanı unuttuysan kurtarma kodunu kullan.
 6. **Reglim başladı** ile hızlı aktif kayıt aç veya **Yeni kayıt** ile ayrıntıları gir.
-7. Geçmiş kayıtlardaki kalem ikonuyla düzenleme yap; **Ayarlar** bölümünden profil, parola ve kurtarma kodunu yönet.
+7. Arkadaşların için admin panelinden ayrı kodlar üret. Her hesap yalnızca kendi takvimini, tahminlerini ve yedeğini görür.
 
 Oturum varsayılan olarak 30 gün geçerlidir. Süre dolduğunda hesap veya döngü verileri silinmez; yalnızca yeniden giriş gerekir.
 
@@ -239,6 +255,8 @@ Dashboard'daki **Yedekle** düğmesi profil ve regl kayıtlarını sürüm bilgi
 - **Kayıtları birleştir:** Mevcut profil ve kayıtları korur, yalnızca eksik başlangıç tarihlerini ekler.
 
 Geri yükleme hesap e-postasını, parolayı, kurtarma kodunu ve oturumları değiştirmez. SQLite dosyasını doğrudan kopyalamadan önce backend'i durdurmak güvenli bir yedek alınmasını sağlar. Ayrıntılar: [JSON yedekleme ve geri yükleme](docs/BACKUP.md).
+
+Admin paneli sağlık verilerini göstermez. Veritabanının tamamına sunucu yöneticisi olarak erişmen gerekirse yerel kurulumda `backend/data/period_tracker.db`, Docker kurulumunda ise `luna-data` named volume kullanılır. Ham SQLite erişimi tüm kullanıcıların hassas verilerine erişim sağladığından yalnızca bakım/yedekleme amacıyla kullanılmalıdır.
 
 ## Proje yapısı
 
@@ -314,6 +332,7 @@ netstat -ano | Select-String ":8000|:5173"
 - [API sözleşmesi](docs/API.md)
 - [PWA ve çevrimdışı davranış](docs/PWA.md)
 - [Güvenlik modeli](docs/SECURITY.md)
+- [Çok kullanıcılı işletim ve admin hesabı](docs/MULTI_USER.md)
 - [JSON yedekleme ve geri yükleme](docs/BACKUP.md)
 - [Veritabanı migration sistemi](docs/MIGRATIONS.md)
 - [Docker kurulumu](docs/DOCKER.md)

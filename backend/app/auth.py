@@ -51,6 +51,19 @@ def hash_session_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+def generate_invite_code() -> str:
+    raw_code = secrets.token_hex(12).upper()
+    return "-".join(raw_code[index:index + 6] for index in range(0, 24, 6))
+
+
+def normalize_invite_code(code: str) -> str:
+    return "".join(character for character in code.upper() if character.isalnum())
+
+
+def hash_invite_code(code: str) -> str:
+    return hashlib.sha256(normalize_invite_code(code).encode("utf-8")).hexdigest()
+
+
 def generate_recovery_code() -> str:
     raw_code = secrets.token_hex(10).upper()
     return "-".join(raw_code[index:index + 5] for index in range(0, 20, 5))
@@ -71,7 +84,12 @@ def verify_recovery_code(code: str, expected_hash: Optional[str]) -> bool:
     return hmac.compare_digest(hash_recovery_code(code), expected_hash)
 
 
-def create_session(connection: sqlite3.Connection, account_id: int) -> str:
+def create_session(
+    connection: sqlite3.Connection,
+    account_id: int,
+    *,
+    commit: bool = True,
+) -> str:
     token = secrets.token_urlsafe(32)
     expires_at = datetime.utcnow() + timedelta(days=SESSION_DAYS)
     connection.execute(
@@ -88,7 +106,8 @@ def create_session(connection: sqlite3.Connection, account_id: int) -> str:
             expires_at.strftime("%Y-%m-%d %H:%M:%S"),
         ),
     )
-    connection.commit()
+    if commit:
+        connection.commit()
     return token
 
 
@@ -103,7 +122,9 @@ def get_optional_account(
         SELECT accounts.*
         FROM sessions
         JOIN accounts ON accounts.id = sessions.account_id
-        WHERE sessions.token_hash = ? AND sessions.expires_at > CURRENT_TIMESTAMP
+        WHERE sessions.token_hash = ?
+          AND sessions.expires_at > CURRENT_TIMESTAMP
+          AND accounts.is_active = 1
         """,
         (hash_session_token(luna_session),),
     ).fetchone()
@@ -116,5 +137,27 @@ def require_account(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Bu islem icin giris yapmalisin.",
+        )
+    return account
+
+
+def require_user_account(
+    account: sqlite3.Row = Depends(require_account),
+) -> sqlite3.Row:
+    if account["role"] != "user":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bu alan yalnızca kişisel takip hesaplarına açıktır.",
+        )
+    return account
+
+
+def require_admin_account(
+    account: sqlite3.Row = Depends(require_account),
+) -> sqlite3.Row:
+    if account["role"] != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bu işlem için yönetici yetkisi gerekir.",
         )
     return account

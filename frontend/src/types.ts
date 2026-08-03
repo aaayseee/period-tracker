@@ -43,6 +43,7 @@ export interface ProfileSetupPayload {
 export interface AccountRegisterPayload extends ProfileSetupPayload {
   email: string;
   password: string;
+  invite_code: string;
 }
 
 export interface AccountLoginPayload {
@@ -52,6 +53,7 @@ export interface AccountLoginPayload {
 
 export interface AuthSession {
   email: string;
+  role: "admin" | "user";
 }
 
 export interface RegistrationResult extends AuthSession {
@@ -75,6 +77,33 @@ export interface PasswordRecoveryResult extends AuthSession {
 
 export interface RecoveryCodeResult {
   recovery_code: string;
+}
+
+export interface AdminUser {
+  id: number;
+  email: string;
+  role: "admin" | "user";
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminInvite {
+  id: number;
+  expires_at: string;
+  max_uses: number;
+  use_count: number;
+  revoked_at: string | null;
+  created_at: string;
+}
+
+export interface AdminInviteCreated extends AdminInvite {
+  invite_code: string;
+}
+
+export interface AdminInviteCreatePayload {
+  expiry_days: number;
+  max_uses: number;
 }
 
 export interface BackupData {

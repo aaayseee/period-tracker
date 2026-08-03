@@ -1,4 +1,6 @@
 import os
+from datetime import datetime, timedelta
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -11,6 +13,33 @@ def build_client(tmp_path):
 
 
 def register(client, **overrides):
+    from app.admin_cli import create_admin_account
+    from app.auth import generate_invite_code, hash_invite_code
+    from app.database import connect
+
+    with connect(Path(os.environ["PERIOD_TRACKER_DB"])) as connection:
+        admin = connection.execute(
+            "SELECT id FROM accounts WHERE role = 'admin'"
+        ).fetchone()
+        if not admin:
+            create_admin_account(connection, "admin@example.com", "admin-parola-123")
+            admin = connection.execute(
+                "SELECT id FROM accounts WHERE role = 'admin'"
+            ).fetchone()
+        invite_code = generate_invite_code()
+        connection.execute(
+            """
+            INSERT INTO invite_codes (code_hash, created_by, expires_at)
+            VALUES (?, ?, ?)
+            """,
+            (
+                hash_invite_code(invite_code),
+                admin["id"],
+                (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S"),
+            ),
+        )
+        connection.commit()
+    client.post("/api/auth/logout")
     payload = {
         "name": "Ayse",
         "email": "ayse@example.com",
@@ -18,6 +47,7 @@ def register(client, **overrides):
         "last_period_start": "2026-04-03",
         "average_cycle_length": 28,
         "average_period_length": 5,
+        "invite_code": invite_code,
     }
     payload.update(overrides)
     return client.post("/api/auth/register", json=payload)
@@ -155,7 +185,7 @@ def test_register_logout_and_returning_login(tmp_path):
         assert len(client.get("/api/periods").json()) == 1
 
 
-def test_only_one_account_can_be_registered(tmp_path):
+def test_multiple_accounts_can_be_registered_but_email_is_unique(tmp_path):
     with build_client(tmp_path) as client:
         assert register(client).status_code == 200
         client.post("/api/auth/logout")
@@ -164,7 +194,10 @@ def test_only_one_account_can_be_registered(tmp_path):
             email="baska@example.com",
             password="baska-guvenli-parola",
         )
-        assert duplicate.status_code == 409
+        assert duplicate.status_code == 200
+        client.post("/api/auth/logout")
+        same_email = register(client)
+        assert same_email.status_code == 409
 
 
 def test_password_change_and_recovery_code_flow(tmp_path):
@@ -364,3 +397,102 @@ def test_secure_cookie_can_be_enabled_for_https(tmp_path, monkeypatch):
         assert "httponly" in cookie_header
         assert "samesite=strict" in cookie_header
         assert "secure" in cookie_header
+
+
+def test_users_have_strictly_isolated_health_data(tmp_path):
+    with build_client(tmp_path) as first_client, build_client(tmp_path) as second_client:
+        assert register(
+            first_client,
+            name="Birinci",
+            email="birinci@example.com",
+            last_period_start="2026-01-01",
+        ).status_code == 200
+        first_period = first_client.post(
+            "/api/periods",
+            json={
+                "start_date": "2026-02-01",
+                "end_date": "2026-02-05",
+                "flow": "medium",
+                "symptoms": ["Kramp"],
+                "notes": "Birinci kullanıcı",
+            },
+        )
+        assert first_period.status_code == 201
+
+        assert register(
+            second_client,
+            name="İkinci",
+            email="ikinci@example.com",
+            password="ikinci-parola-123",
+            last_period_start="2026-01-10",
+        ).status_code == 200
+        same_date = second_client.post(
+            "/api/periods",
+            json={
+                "start_date": "2026-02-01",
+                "end_date": "2026-02-04",
+                "flow": "light",
+                "symptoms": [],
+                "notes": "İkinci kullanıcı",
+            },
+        )
+        assert same_date.status_code == 201
+
+        assert first_client.get("/api/profile").json()["name"] == "Birinci"
+        assert second_client.get("/api/profile").json()["name"] == "İkinci"
+        assert {item["notes"] for item in first_client.get("/api/periods").json()} == {
+            "Onboarding setup",
+            "Birinci kullanıcı",
+        }
+        assert {item["notes"] for item in second_client.get("/api/periods").json()} == {
+            "Onboarding setup",
+            "İkinci kullanıcı",
+        }
+        assert second_client.delete(
+            f"/api/periods/{first_period.json()['id']}"
+        ).status_code == 404
+        assert first_client.get("/api/export").json()["profile"]["name"] == "Birinci"
+        assert second_client.get("/api/export").json()["profile"]["name"] == "İkinci"
+
+
+def test_admin_can_manage_invites_and_status_but_not_health_data(tmp_path):
+    with build_client(tmp_path) as user_client, build_client(tmp_path) as admin_client:
+        assert register(user_client, email="user@example.com").status_code == 200
+        assert admin_client.post(
+            "/api/auth/login",
+            json={"email": "admin@example.com", "password": "admin-parola-123"},
+        ).status_code == 200
+        assert admin_client.get("/api/auth/session").json()["role"] == "admin"
+        assert admin_client.get("/api/profile").status_code == 403
+        assert admin_client.get("/api/periods").status_code == 403
+
+        created_invite = admin_client.post(
+            "/api/admin/invites", json={"expiry_days": 14, "max_uses": 2}
+        )
+        assert created_invite.status_code == 201
+        assert len(created_invite.json()["invite_code"].replace("-", "")) == 24
+        listed_invites = admin_client.get("/api/admin/invites").json()
+        assert listed_invites
+        assert all("invite_code" not in invite for invite in listed_invites)
+
+        users = admin_client.get("/api/admin/users")
+        assert users.status_code == 200
+        user_row = next(item for item in users.json() if item["email"] == "user@example.com")
+        assert set(user_row) == {
+            "id", "email", "role", "is_active", "created_at", "updated_at"
+        }
+        disabled = admin_client.patch(
+            f"/api/admin/users/{user_row['id']}", json={"is_active": False}
+        )
+        assert disabled.status_code == 200
+        assert disabled.json()["is_active"] is False
+        assert user_client.get("/api/auth/session").json() is None
+        assert user_client.get("/api/periods").status_code == 401
+        assert user_client.post(
+            "/api/auth/login",
+            json={"email": "user@example.com", "password": "guvenli-parola-123"},
+        ).status_code == 401
+
+        assert admin_client.post(
+            f"/api/admin/invites/{created_invite.json()['id']}/revoke"
+        ).json()["revoked_at"] is not None

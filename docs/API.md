@@ -28,13 +28,14 @@ ve `401 Unauthorized` döndürür.
 
 ### `POST /api/auth/register`
 
-Tek yerel hesabı, profili, ilk regl kaydını ve session'ı oluşturur.
+Davet kodunu tüketerek `user` rolündeki hesabı, profili, ilk regl kaydını ve session'ı tek transaction içinde oluşturur.
 
 ```json
 {
   "name": "Ayşe",
   "email": "ayse@example.com",
   "password": "en-az-8-karakter",
+  "invite_code": "XXXXXX-XXXXXX-XXXXXX-XXXXXX",
   "last_period_start": "2026-07-10",
   "average_cycle_length": 28,
   "average_period_length": 5
@@ -46,11 +47,12 @@ Başarılı yanıt:
 ```json
 {
   "email": "ayse@example.com",
+  "role": "user",
   "recovery_code": "XXXXX-XXXXX-XXXXX-XXXXX"
 }
 ```
 
-Kurtarma kodu yalnızca bu yanıtta açık biçimde gösterilir. Zaten hesap varsa `409 Conflict` döner.
+Kurtarma kodu yalnızca bu yanıtta açık biçimde gösterilir. Geçersiz/süresi dolmuş davet `422`, kullanılan e-posta `409 Conflict` döner.
 
 ### `POST /api/auth/login`
 
@@ -69,11 +71,49 @@ Geçerli session varsa:
 
 ```json
 {
-  "email": "ayse@example.com"
+  "email": "ayse@example.com",
+  "role": "user"
 }
 ```
 
 Oturum yoksa `null` döner. Bu endpoint public'tir.
+
+## Admin endpoint'leri
+
+Bu endpoint'ler yalnızca `admin` rolüyle kullanılabilir. Normal kullanıcı `403 Forbidden` alır.
+
+### `GET /api/admin/users`
+
+Hesapların yalnızca operasyonel metadatasını döndürür: `id`, `email`, `role`, `is_active`, `created_at`, `updated_at`. Profil veya sağlık verisi içermez.
+
+### `PATCH /api/admin/users/{account_id}`
+
+Kişisel kullanıcıyı etkinleştirir veya devre dışı bırakır:
+
+```json
+{ "is_active": false }
+```
+
+Devre dışı bırakma kullanıcının tüm session'larını iptal eder; verilerini silmez. Admin hesapları bu endpoint ile değiştirilemez.
+
+### `POST /api/admin/invites`
+
+```json
+{
+  "expiry_days": 7,
+  "max_uses": 1
+}
+```
+
+`201 Created` yanıtında `invite_code` yalnızca bir kez döner. Veritabanında ham kod saklanmaz.
+
+### `GET /api/admin/invites`
+
+Davet id, son tarih, kullanım limiti/sayısı, iptal ve oluşturulma zamanını döndürür. Ham davet kodu listede bulunmaz.
+
+### `POST /api/admin/invites/{invite_id}/revoke`
+
+Davet kodunu kalıcı olarak geçersiz kılar.
 
 ### `POST /api/auth/logout`
 

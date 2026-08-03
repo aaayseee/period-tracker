@@ -11,13 +11,15 @@
 
 | Beklenti | Durum | Kanıt ve not |
 |---|---|---|
-| Veritabanı şeması | Tamamlandı | `periods`, `profile`, `accounts`, `sessions` tabloları; indeksler ve constraint'ler `database.py` içinde |
+| Veritabanı şeması | Tamamlandı | Hesap sahipli `periods`/`profile`, rol destekli `accounts`, `sessions`, `invite_codes`, indeksler ve constraint'ler migration'larda |
 | Regl başlangıç/bitiş tarihleri | Tamamlandı | `start_date`, opsiyonel `end_date`, tarih sırası kontrolü |
 | Semptom ve notlar | Tamamlandı | Akış seviyesi, semptom JSON listesi ve 1000 karakterlik not |
 | FastAPI iskeleti | Tamamlandı | Lifespan sırasında idempotent SQLite kurulumu, CORS ve health endpoint |
 | Veritabanı bağlantısı | Tamamlandı | İstek başına açılıp kapanan `sqlite3.Connection`, row factory ve foreign key kontrolü |
 | Tarihleri kaydetme/okuma | Tamamlandı | List, create, update ve delete endpoint'leri |
 | Hesap/session | Tamamlandı | Kayıt, giriş, çıkış, session kontrolü ve korumalı veri uçları |
+| Çok kullanıcı ve veri izolasyonu | Tamamlandı | Davetli kayıt, `account_id` filtreleri, ayrı admin rolü ve iki kullanıcı izolasyon testleri |
+| Admin paneli | Tamamlandı | Davet üretme/iptal, kullanıcı metadata listesi ve aktif/pasif yönetimi; sağlık verisi gösterilmez |
 | Parola değiştirme/kurtarma | Tamamlandı | Parola değişimi, hash'li kurtarma kodu, kod rotasyonu ve eski session iptali |
 | Veritabanı migration sistemi | Tamamlandı | Sıralı Python migration'ları, `schema_migrations`, otomatik başlangıç yükseltmesi ve rollback testleri |
 
@@ -109,12 +111,12 @@ Bu nedenle doğru ifade:
 4. Lighthouse denetimi
 5. İstenirse şifreli IndexedDB ve offline sync
 
-### P3 — Çok kullanıcılı ölçek gerekirse
+### P3 — Daha yüksek kullanıcı ölçeği gerekirse
 
 1. PostgreSQL
-2. Tablolarda `account_id`
-3. SQLAlchemy/Alembic
-4. Rate limit ve e-posta doğrulama
+2. SQLAlchemy/Alembic
+3. Rate limit ve e-posta doğrulama
+4. Admin audit logları
 5. Birden fazla backend instance ve merkezi session store
 
 ## “Bitti” kabul kriteri

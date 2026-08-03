@@ -58,6 +58,10 @@ $env:PERIOD_TRACKER_SECURE_COOKIE = "true"
 
 Profil, regl kayıtları, tahmin, export ve restore endpoint'leri geçerli session ister. Session olmadan `401 Unauthorized` döner.
 
+Kişisel veri endpoint'leri ayrıca `user` rolü ister ve her SQL sorgusunu oturumdaki `account_id` ile filtreler. Admin hesabı bu endpoint'lerde `403 Forbidden` alır. Admin endpoint'leri yalnızca hesap/davet metadatası seçer; sağlık tablolarını okumaz.
+
+Kayıt davet koduyla sınırlandırılır. Ham davet kodu saklanmaz; SHA-256 özeti, son tarih, kullanım limiti ve iptal durumu tutulur. Hesap oluşturma ile davetin tüketimi aynı transaction içindedir.
+
 Public endpoint'ler:
 
 - `GET /health`
@@ -73,7 +77,7 @@ SQL sorguları placeholder parametreleri kullanır; kullanıcı girdisi SQL metn
 
 Mevcut sürüm şu ortamı hedefler:
 
-- Tek kullanıcı
+- Davetli, düşük trafikli küçük kullanıcı grubu
 - Kişisel bilgisayar veya kontrol edilen sunucu
 - Güvenilir yerel ağ ya da HTTPS
 - Düşük istek hacmi
@@ -94,6 +98,7 @@ Mevcut sürüm şu ortamı hedefler:
 - CORS origin listesini gerçek domain ile sınırla — `LUNA_DOMAIN` üzerinden ayarlanıyor
 - Reverse proxy üzerinde HSTS, CSP, X-Content-Type-Options ve Referrer-Policy ekle — Caddyfile içinde yapılandırıldı
 - Login rate limiting ve geçici hesap kilidi ekle
+- Admin işlemleri için audit log ekle
 - Parola sıfırlama ve e-posta doğrulama tasarla
 - SQLite/veritabanı dosyasını şifreli diskte tut
 - Düzenli şifreli yedek al ve geri yüklemeyi test et

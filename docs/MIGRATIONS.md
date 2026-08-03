@@ -10,7 +10,8 @@ backend/app/migrations/
 ├── __main__.py                # Komut satırı arayüzü
 └── versions/
     ├── v0001_initial.py        # İlk tablolar ve indeksler
-    └── v0002_recovery_code.py  # recovery_code_hash sütunu
+    ├── v0002_recovery_code.py  # recovery_code_hash sütunu
+    └── v0003_multi_user.py     # hesap sahipliği, roller ve davetler
 ```
 
 Uygulanan migration'lar SQLite içindeki `schema_migrations` tablosuna kaydedilir:
@@ -51,7 +52,8 @@ Backend klasöründen:
 Database: C:\...\backend\data\period_tracker.db
 [x] 0001 initial_schema (2026-08-03 14:30:00)
 [x] 0002 add_recovery_code_hash (2026-08-03 14:30:00)
-Latest version: 0002
+[x] 0003 multi_user_accounts_and_invites (2026-08-03 14:31:00)
+Latest version: 0003
 ```
 
 Bekleyen migration'ları manuel uygulamak için:
@@ -64,13 +66,13 @@ Bekleyen migration'ları manuel uygulamak için:
 
 ## Yeni migration ekleme
 
-Örnek olarak üçüncü migration:
+Örnek olarak dördüncü migration:
 
 ```python
-# backend/app/migrations/versions/v0003_example.py
+# backend/app/migrations/versions/v0004_example.py
 import sqlite3
 
-VERSION = 3
+VERSION = 4
 NAME = "add_example_column"
 
 
@@ -95,8 +97,9 @@ Migration sistemi eklenmeden önce oluşturulan Luna veritabanlarında `schema_m
 
 - `0001`, var olan tabloları `CREATE ... IF NOT EXISTS` ile korur.
 - `0002`, `recovery_code_hash` sütunu zaten varsa tekrar eklemez.
-- Hesap, profil, session ve regl kayıtları silinmez.
-- İki migration başarıyla geçmişe kaydedilir.
+- `0003`, singleton hesabı `user` rolünde korur; profil ve tüm regl kayıtlarını aynı hesabın `account_id` değeriyle ilişkilendirir, ardından admin/davet desteğini ekler.
+- Hesap kimliği, profil, session ve regl kayıt içerikleri silinmez.
+- Üç migration başarıyla geçmişe kaydedilir.
 
 Bu geçiş otomatik testte gerçek bir legacy şema ve örnek hesap verisiyle doğrulanır.
 

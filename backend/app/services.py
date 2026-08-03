@@ -9,6 +9,7 @@ from .schemas import Insights, Period, Profile
 
 def row_to_period(row: Row) -> Period:
     values = dict(row)
+    values.pop("account_id", None)
     values["symptoms"] = json.loads(values["symptoms"] or "[]")
     return Period(**values)
 
@@ -18,6 +19,7 @@ def row_to_profile(row: Optional[Row]) -> Optional[Profile]:
         return None
     values = dict(row)
     values.pop("id", None)
+    values.pop("account_id", None)
     return Profile(**values)
 
 

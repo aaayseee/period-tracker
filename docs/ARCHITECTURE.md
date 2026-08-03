@@ -1,151 +1,99 @@
-# Mimari ve Ölçeklenebilirlik
+# Mimari ve ölçeklenebilirlik
 
 ## Amaç ve kapsam
 
-Luna şu anda tek kişinin kendi cihazlarında kullanacağı, tek hesaplı ve kendi kendine barındırılan bir uygulama olarak tasarlanmıştır. Mimari bu kapsam için bilinçli şekilde küçüktür: ayrı frontend/backend, dosya tabanlı veritabanı ve sunucu tarafı session.
-
-Bu belge “mevcut kapsamda ölçeklenebilir” ile “çok kullanıcılı SaaS ölçeğinde hazır” ifadelerini birbirinden ayırır.
-
-## Sistem görünümü
+Luna, tek deployment üzerinden davetli birden fazla kullanıcının kendi döngü verisini takip edebildiği, kendi kendine barındırılan bir PWA'dır. React PWA, FastAPI ve SQLite katmanlarından oluşur. Yönetici hesabı operasyon içindir; sağlık verilerine erişmez. Kişisel takip için ayrı `user` hesabı kullanılır.
 
 ```mermaid
 flowchart LR
-    U[Telefon veya masaüstü tarayıcı] -->|HTTPS / HTTP geliştirme| F[React PWA]
-    F -->|JSON REST / api| A[FastAPI]
-    A --> AU[Auth ve session]
+    U[Telefon / tarayıcı] -->|HTTPS| C[Caddy]
+    C --> N[Nginx + React PWA]
+    N -->|/api| A[FastAPI]
+    A --> AU[Kimlik ve rol kontrolü]
     A --> PR[Tahmin servisi]
-    A --> DB[(SQLite)]
-    DB --> B[JSON / dosya yedeği]
+    A --> DB[(SQLite volume)]
 ```
 
-Yerel Docker kurulumunda Nginx hostun yalnız `127.0.0.1` arayüzüne açılır. HTTPS production katmanında Caddy, 80/443 portlarındaki tek dış giriş noktasıdır; TLS'i sonlandırır ve istekleri Compose iç ağındaki Nginx'e aktarır. Nginx statik React build'ini sunar, `/api` ile `/health` isteklerini FastAPI container'ına yönlendirir. Backend portu host makineye açılmaz; SQLite named volume üzerinde kalır.
+Nginx statik frontend'i sunar ve API isteklerini backend container'ına yönlendirir. Production katmanında Caddy TLS'i sonlandırır. Backend portu doğrudan internete açılmaz. Service Worker uygulama kabuğunu önbelleğe alır; API sağlık verilerini cache'lemez.
 
-Frontend hiçbir sağlık verisini kendi kalıcı deposunun ana kaynağı olarak kullanmaz. Kaynak veri SQLite'tır. Service Worker API yanıtlarını önbelleğe almaz.
-
-## Backend modülleri
+## Backend sorumlulukları
 
 | Modül | Sorumluluk |
 |---|---|
-| `main.py` | FastAPI uygulaması, middleware ve HTTP endpoint'leri |
-| `database.py` | SQLite bağlantısı ve migration başlangıç noktası |
-| `migrations/` | Sürümlü, sıralı ve transaction'lı şema değişiklikleri |
-| `schemas.py` | Pydantic istek/yanıt modelleri ve alan doğrulaması |
-| `auth.py` | Parola hash'i, session token üretimi ve auth dependency'leri |
-| `services.py` | Satır-model dönüşümleri ve döngü tahmin algoritması |
+| `main.py` | FastAPI endpoint'leri, kayıt transaction'ı, kullanıcı/admin işlemleri |
+| `auth.py` | PBKDF2 parola, recovery/davet hash'leri, session ve rol dependency'leri |
+| `database.py` | SQLite bağlantısı, foreign key ayarı ve migration başlangıcı |
+| `migrations/` | Sıralı, transaction'lı ve geri alınabilir şema yükseltmeleri |
+| `schemas.py` | Pydantic istek/yanıt sözleşmeleri |
+| `services.py` | Model dönüşümü ve döngü tahmin algoritması |
+| `admin_cli.py` | İlk admin hesabının etkileşimli ve güvenli oluşturulması |
 
-İş kuralları tahmin servisinde, HTTP doğrulaması şemalarda, kimlik doğrulama auth modülünde tutulur. Endpoint sayısı büyürse `main.py` dosyası `routers/auth.py`, `routers/periods.py` ve `routers/insights.py` şeklinde bölünmelidir.
+`main.py` MVP için okunabilir durumdadır ancak büyümeye başlayan ilk sınırdır. Yeni domainler eklendiğinde `routers/auth.py`, `routers/admin.py`, `routers/periods.py`, `repositories/` ve `services/` ayrımı yapılmalıdır.
 
-## Frontend modülleri
+## Frontend sorumlulukları
 
-| Modül | Sorumluluk |
+| Dosya | Sorumluluk |
 |---|---|
-| `App.tsx` | Onboarding, auth durumu, dashboard, takvim ve formlar |
-| `api.ts` | Tek noktadan fetch, hata dönüşümü ve API metotları |
-| `types.ts` | Backend sözleşmelerinin TypeScript karşılıkları |
-| `styles.css` | Responsive tasarım sistemi |
-| `public/sw.js` | Uygulama kabuğu için ağ-öncelikli cache |
-| `nginx.conf` | Docker ortamında statik dosya sunumu, SPA fallback ve backend reverse proxy |
-| `deploy/Caddyfile` | Otomatik HTTPS, HTTP yönlendirmesi, sıkıştırma ve production güvenlik header'ları |
+| `App.tsx` | Auth/onboarding, kişisel dashboard, takvim, ayarlar ve admin paneli |
+| `api.ts` | Cookie kullanan merkezi HTTP istemcisi |
+| `types.ts` | API sözleşmelerinin TypeScript karşılıkları |
+| `styles.css` | Responsive görsel sistem |
+| `public/sw.js` | PWA shell cache ve çevrimdışı fallback davranışı |
 
-`App.tsx` bir sonraki büyüme sınırına yaklaşmaktadır. Yeni ekranlar eklendiğinde `features/auth`, `features/calendar`, `features/periods` ve `components` klasörlerine ayrılması önerilir.
+`App.tsx` yeni özelliklerden önce `features/auth`, `features/tracker`, `features/admin` ve ortak `components` parçalarına ayrılmalıdır.
 
 ## Veri modeli
 
 ### `accounts`
 
-Tek yerel hesabın e-posta, parola hash'i ve salt bilgisini tutar. Parola düz metin tutulmaz.
+E-posta, parola hash/salt, recovery hash, `admin|user` rolü ve aktiflik durumu. Migration öncesindeki singleton hesap `user` rolünde ve aynı id ile korunur.
 
 ### `profile`
 
-İsim, kullanıcının başlangıç ortalama döngü uzunluğu ve regl süresini tutar.
+Bir kullanıcıya bire bir bağlıdır. Primary key olan `account_id`, `accounts.id` alanına foreign key'dir. İsim ve başlangıç ortalamalarını tutar.
 
 ### `periods`
 
-Başlangıç/bitiş tarihi, akış, semptom JSON'u, not ve zaman damgalarını tutar.
+Her satır `account_id` sahibine bağlıdır. Başlangıç/bitiş, akış, semptom JSON'u, not ve zaman damgalarını tutar. `UNIQUE(account_id, start_date)` sayesinde kullanıcı kendi içinde aynı başlangıcı iki kez kaydedemez; farklı kullanıcılar aynı tarihi kaydedebilir.
 
 ### `sessions`
 
-Ham cookie yerine SHA-256 özeti alınmış session token, hesap ilişkisi ve sona erme zamanını tutar.
+Ham cookie değil SHA-256 token özeti, hesap ilişkisi ve sona erme zamanını tutar. Pasif hesap session sorgusundan dönmez.
 
-Mevcut tablolardaki `id = 1` kontrolleri tasarımın tek hesaplı olduğunu açıkça garanti eder.
+### `invite_codes`
 
-## Temel istek akışları
+Ham kod yerine SHA-256 hash, oluşturan admin, son tarih, kullanım limiti/sayısı ve iptal zamanını tutar.
 
-### Hesap oluşturma
+## Yetkilendirme ve izolasyon
 
-1. Frontend isim, e-posta, parola ve ilk döngü değerlerini gönderir.
-2. API e-postayı normalize eder ve alanları Pydantic ile doğrular.
-3. Parola rastgele salt ile PBKDF2-HMAC-SHA256 kullanılarak hash'lenir.
-4. Hesap ve profil yazılır; son regl tarihi ilk kayıt olarak eklenir.
-5. Rastgele session token üretilir; yalnızca hash'i veritabanında saklanır.
-6. Ham token HttpOnly/SameSite cookie olarak tarayıcıya gönderilir.
+1. Cookie token'ı hash'lenir ve aktif hesapla birlikte session tablosundan bulunur.
+2. Endpoint rol dependency'si `user` veya `admin` gereksinimini uygular.
+3. Tüm profil, dönem, tahmin, export ve restore SQL sorguları `account_id` ile filtrelenir.
+4. Başka hesaba ait dönem id'si güncelleme/silmede bulunmuş kabul edilmez ve `404` döner.
+5. Admin sorguları yalnızca hesap ve davet metadata kolonlarını seçer; sağlık tablolarına join yapmaz.
 
-### Giriş
-
-1. E-posta ile hesap bulunur.
-2. Girilen parola aynı salt ve iterasyon sayısıyla hash'lenir.
-3. Hash'ler sabit zamanlı karşılaştırılır.
-4. Başarılıysa yeni 30 günlük session oluşturulur.
-
-### Korumalı veri isteği
-
-1. Tarayıcı session cookie'yi aynı origin isteğine ekler.
-2. API cookie token'ının hash'ini hesaplar.
-3. Geçerli ve süresi dolmamış session aranır.
-4. Session yoksa `401`, varsa istenen veri döner.
+Kayıt sırasında davet doğrulama, hesap/profil/ilk dönem oluşturma, davet kullanım sayısını artırma ve session yazma tek `BEGIN IMMEDIATE` transaction içinde gerçekleşir.
 
 ## Tahmin algoritması
 
-1. Regl başlangıçları tarihe göre sıralanır.
-2. Ardışık başlangıçlar arasındaki gün farkı döngü uzunluğudur.
-3. 15 günden kısa veya 60 günden uzun farklar olası veri hatası/outlier kabul edilip ortalamaya alınmaz.
-4. Geçerli döngülerin aritmetik ortalaması yuvarlanır.
-5. Tamamlanmış kayıtların başlangıç-bitiş farkından ortalama regl süresi hesaplanır.
-6. Geçmiş yetersizse onboarding sırasında verilen profil değerleri kullanılır.
-7. Sonraki regl, son başlangıç + ortalama döngü olarak hesaplanır.
-8. Yumurtlama yaklaşık olarak sonraki reglden 14 gün önce; doğurgan pencere bunun 5 gün öncesi ile 1 gün sonrası kabul edilir.
+Başlangıçlar sıralanır; ardışık geçerli aralıkların (15–60 gün) ortalaması döngü uzunluğunu verir. Tamamlanmış kayıtlar regl süresi ortalamasını oluşturur. Yetersiz geçmişte profil varsayımları kullanılır. Sonraki regl, ovülasyon, doğurgan pencere ve 7 günlük PMS penceresi takvim tabanlı yaklaşık değerlerdir; tıbbi model veya doğum kontrol yöntemi değildir.
 
-Güven seviyesi:
+## Ölçeklenebilirlik
 
-- 0–2 tamamlanmış döngü: düşük
-- 3–5: orta
-- 6 ve üzeri: yüksek
-
-Bu istatistiksel yaklaşım tıbbi model değildir.
-
-## Ölçeklenebilirlik değerlendirmesi
-
-| Alan | Mevcut durum | Sınır |
+| Alan | Mevcut durum | Sınır / geçiş |
 |---|---|---|
-| Kişisel kullanım | Uygun | Yıllarca sürecek birkaç bin kayıt SQLite için küçüktür |
-| Birden fazla cihaz | Uygun | Aynı backend adresine HTTPS ile erişim gerekir |
-| Birden fazla backend worker | Kısmen | SQLite yazma kilitleri darboğaz olabilir |
-| Birden fazla kullanıcı | Uygun değil | Şema bilinçli olarak tek hesaplıdır |
-| Tam çevrimdışı yazma | Yok | API verileri queue edilmez veya senkronize edilmez |
-| Şema değişiklikleri | Uygun | Yerel sürümlü migration runner; uygulanan sürümler `schema_migrations` tablosunda |
+| Arkadaş grubu / düşük trafik | Uygun | Tek SQLite writer bu ölçek için yeterli |
+| Birden fazla cihaz | Uygun | Aynı HTTPS deployment'a bağlanır |
+| Çok kullanıcı veri izolasyonu | Uygun | `account_id`, rol dependency'leri ve otomatik testler mevcut |
+| Yüksek eşzamanlı yazma | Sınırlı | PostgreSQL'e geçiş gerekir |
+| Birden fazla backend instance | Sınırlı | PostgreSQL + merkezi session store gerekir |
+| Tam offline yazma | Yok | IndexedDB queue/senkronizasyon tasarlanmalı |
+| Public internet güvenliği | Kısmi | HTTPS var; rate limit, e-posta doğrulama ve izleme eklenmeli |
 
-## Çok kullanıcılı sisteme geçiş yolu
-
-1. PostgreSQL ve SQLAlchemy 2.x eklenir.
-2. Alembic ile versiyonlu migrasyon başlatılır.
-3. `profile` ve `periods` tablolarına `account_id` foreign key eklenir.
-4. Tüm sorgular authenticated account ile filtrelenir.
-5. Session store gerekirse Redis'e taşınır.
-6. Rate limiting, e-posta doğrulama ve parola sıfırlama eklenir.
-7. Backend stateless hâle getirilerek birden fazla instance çalıştırılır.
-
-Bu dönüşüm frontend API sözleşmesini büyük ölçüde koruyabilir.
+SQLite tek sunucudaki küçük, davetli kullanım için bilinçli bir seçimdir. Genel erişimli veya yoğun kullanımlı bir ürüne geçişte PostgreSQL, SQLAlchemy/Alembic, rate limiting, e-posta doğrulama, audit log ve merkezi session store planlanmalıdır.
 
 ## Temiz kod değerlendirmesi
 
-Mevcut kod küçük MVP için okunabilir ve sorumlulukların önemli bölümü ayrılmıştır. Tipli sözleşmeler, merkezi API istemcisi, parameterized SQL ve testler güçlü yönlerdir.
+Güçlü taraflar: tipli API sözleşmeleri, parameterized SQL, transaction'lı migration, merkezi auth, rol ayrımı, veri sahipliği filtreleri ve backend entegrasyon testleri. Bilinen teknik borçlar: büyüyen `main.py` ve `App.tsx`, merkezi hata kodlarının/loglamanın olmaması, UI component/e2e testlerinin ve rate limiting'in eksikliği.
 
-Teknik borçlar:
-
-- Backend endpoint'leri büyüdükçe router dosyalarına ayrılmalı.
-- Frontend `App.tsx` feature/component katmanlarına bölünmeli.
-- PostgreSQL/SQLAlchemy geçişinde yerel runner Alembic revision geçmişine dönüştürülmeli.
-- Loglama ve merkezi hata modeli tanımlanmalı.
-- Çok kullanıcılı hedef oluşursa singleton tablo varsayımı kaldırılmalı.
-
-Sonuç: kişisel uygulama kapsamı için düzenli ve geliştirilebilir; genel amaçlı yüksek ölçekli platform olarak henüz hazır değildir.
+Sonuç: mimari davetli küçük çok kullanıcılı deployment için düzenli ve yeterlidir; yüksek trafikli genel SaaS olarak henüz ölçeklenmiş değildir.

@@ -32,14 +32,15 @@ def test_fresh_database_applies_all_migrations_idempotently(tmp_path):
             "profile",
             "schema_migrations",
             "sessions",
+            "invite_codes",
         }.issubset(table_names(connection))
         assert [
             row["version"]
             for row in connection.execute(
                 "SELECT version FROM schema_migrations ORDER BY version"
             ).fetchall()
-        ] == [1, 2]
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        ] == [1, 2, 3]
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
         assert "recovery_code_hash" in {
             row["name"]
             for row in connection.execute("PRAGMA table_info(accounts)").fetchall()
@@ -73,6 +74,14 @@ def test_existing_database_is_baselined_and_preserves_data(tmp_path):
     init_database(database_path)
 
     with connect(database_path) as connection:
+        assert {"role", "is_active"}.issubset({
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(accounts)").fetchall()
+        })
+        assert "account_id" in {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(periods)").fetchall()
+        }
         account = connection.execute(
             "SELECT email, password_hash, password_salt FROM accounts WHERE id = 1"
         ).fetchone()
@@ -87,7 +96,10 @@ def test_existing_database_is_baselined_and_preserves_data(tmp_path):
         }
         assert connection.execute(
             "SELECT COUNT(*) FROM schema_migrations"
-        ).fetchone()[0] == 2
+        ).fetchone()[0] == 3
+        assert connection.execute(
+            "SELECT role FROM accounts WHERE id = 1"
+        ).fetchone()[0] == "user"
 
 
 def test_failed_migration_rolls_back_schema_and_version(tmp_path):
@@ -100,7 +112,7 @@ def test_failed_migration_rolls_back_schema_and_version(tmp_path):
 
     migrations = (
         *MIGRATIONS,
-        Migration(version=3, name="failing_test_migration", upgrade=failing_upgrade),
+        Migration(version=4, name="failing_test_migration", upgrade=failing_upgrade),
     )
 
     with connect(database_path) as connection:
@@ -110,9 +122,9 @@ def test_failed_migration_rolls_back_schema_and_version(tmp_path):
     with connect(database_path) as connection:
         assert "should_be_rolled_back" not in table_names(connection)
         assert connection.execute(
-            "SELECT COUNT(*) FROM schema_migrations WHERE version = 3"
+            "SELECT COUNT(*) FROM schema_migrations WHERE version = 4"
         ).fetchone()[0] == 0
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
 
 
 def test_incompatible_legacy_schema_is_not_baselined(tmp_path):
@@ -137,3 +149,44 @@ def test_incompatible_legacy_schema_is_not_baselined(tmp_path):
             "SELECT COUNT(*) FROM schema_migrations"
         ).fetchone()[0] == 0
         assert connection.execute("PRAGMA user_version").fetchone()[0] == 0
+
+
+def test_multi_user_migration_assigns_existing_health_data_to_existing_account(tmp_path):
+    database_path = tmp_path / "existing-v2.db"
+    with connect(database_path) as connection:
+        apply_migrations(connection, MIGRATIONS[:2])
+        connection.execute(
+            """
+            INSERT INTO accounts (
+                id, email, password_hash, password_salt, recovery_code_hash
+            ) VALUES (1, 'owner@example.com', 'hash', 'salt', 'recovery')
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO profile (id, name, average_cycle_length, average_period_length)
+            VALUES (1, 'Owner', 30, 6)
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO periods (start_date, end_date, flow, symptoms, notes)
+            VALUES ('2026-06-01', '2026-06-06', 'medium', '[]', 'preserve')
+            """
+        )
+        connection.commit()
+        apply_migrations(connection)
+
+    with connect(database_path) as connection:
+        account = connection.execute(
+            "SELECT id, role, is_active FROM accounts WHERE email = 'owner@example.com'"
+        ).fetchone()
+        assert dict(account) == {"id": 1, "role": "user", "is_active": 1}
+        assert connection.execute(
+            "SELECT account_id, name FROM profile"
+        ).fetchone()["account_id"] == 1
+        period = connection.execute(
+            "SELECT account_id, notes FROM periods"
+        ).fetchone()
+        assert dict(period) == {"account_id": 1, "notes": "preserve"}
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
