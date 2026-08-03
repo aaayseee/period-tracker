@@ -52,6 +52,20 @@ def test_period_crud_and_insights(tmp_path):
         assert second.status_code == 201
         assert len(client.get("/api/periods").json()) == 3
 
+        updated = client.put(
+            f"/api/periods/{first.json()['id']}",
+            json={
+                "start_date": "2026-05-01",
+                "end_date": "2026-05-06",
+                "flow": "heavy",
+                "symptoms": ["Kramp", "Yorgunluk"],
+                "notes": "Guncellendi",
+            },
+        )
+        assert updated.status_code == 200
+        assert updated.json()["end_date"] == "2026-05-06"
+        assert updated.json()["flow"] == "heavy"
+
         response = client.get("/api/insights", params={"today": "2026-06-10"})
         assert response.status_code == 200
         payload = response.json()
@@ -97,6 +111,17 @@ def test_register_logout_and_returning_login(tmp_path):
 
         profile = client.get("/api/profile").json()
         assert profile["name"] == "Ayse"
+        profile_update = client.put(
+            "/api/profile",
+            json={
+                "name": "Ayse Luna",
+                "average_cycle_length": 30,
+                "average_period_length": 5,
+            },
+        )
+        assert profile_update.status_code == 200
+        assert profile_update.json()["name"] == "Ayse Luna"
+        assert len(client.get("/api/periods").json()) == 1
         periods = client.get("/api/periods").json()
         assert periods[0]["start_date"] == "2026-07-10"
         assert periods[0]["end_date"] == "2026-07-15"

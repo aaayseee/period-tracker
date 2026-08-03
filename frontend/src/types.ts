@@ -27,6 +27,12 @@ export interface Profile {
   updated_at: string;
 }
 
+export interface ProfileUpdatePayload {
+  name: string;
+  average_cycle_length: number;
+  average_period_length: number;
+}
+
 export interface ProfileSetupPayload {
   name: string;
   last_period_start: string;

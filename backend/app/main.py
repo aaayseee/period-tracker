@@ -30,7 +30,7 @@ from .schemas import (
     PeriodCreate,
     PeriodUpdate,
     Profile,
-    ProfileSetup,
+    ProfileUpdate,
 )
 from .services import calculate_insights, row_to_period, row_to_profile, utc_now
 
@@ -212,17 +212,14 @@ def get_profile(
     response_model=Profile,
     dependencies=[Depends(require_account)],
 )
-def setup_profile(
-    payload: ProfileSetup,
+def update_profile(
+    payload: ProfileUpdate,
     connection: sqlite3.Connection = Depends(get_connection),
 ) -> Profile:
     clean_name = payload.name.strip()
     if not clean_name:
         raise HTTPException(status_code=422, detail="Name cannot be empty.")
 
-    period_end = payload.last_period_start + timedelta(
-        days=payload.average_period_length - 1
-    )
     connection.execute(
         """
         INSERT INTO profile (
@@ -239,13 +236,6 @@ def setup_profile(
             payload.average_cycle_length,
             payload.average_period_length,
         ),
-    )
-    connection.execute(
-        """
-        INSERT OR IGNORE INTO periods (start_date, end_date, flow, symptoms, notes)
-        VALUES (?, ?, 'medium', '[]', 'Onboarding setup')
-        """,
-        (payload.last_period_start.isoformat(), period_end.isoformat()),
     )
     connection.commit()
     row = connection.execute("SELECT * FROM profile WHERE id = 1").fetchone()

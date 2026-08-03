@@ -5,7 +5,8 @@ import type {
   Insights,
   Period,
   PeriodPayload,
-  Profile
+  Profile,
+  ProfileUpdatePayload
 } from "./types";
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
@@ -47,10 +48,20 @@ export const api = {
     }),
   logout: () => request<void>("/api/auth/logout", { method: "POST" }),
   getProfile: () => request<Profile | null>("/api/profile"),
+  updateProfile: (payload: ProfileUpdatePayload) =>
+    request<Profile>("/api/profile", {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    }),
   getPeriods: () => request<Period[]>("/api/periods"),
   getInsights: () => request<Insights>("/api/insights"),
   createPeriod: (payload: PeriodPayload) =>
     request<Period>("/api/periods", { method: "POST", body: JSON.stringify(payload) }),
+  updatePeriod: (id: number, payload: PeriodPayload) =>
+    request<Period>(`/api/periods/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    }),
   deletePeriod: (id: number) => request<void>(`/api/periods/${id}`, { method: "DELETE" }),
   exportUrl: "/api/export"
 };
