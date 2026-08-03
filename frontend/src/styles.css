@@ -84,10 +84,12 @@ main { max-width: 1180px; margin: 0 auto; padding: 50px 28px 72px; }
 .calendar-day.today { box-shadow: inset 0 0 0 1.5px var(--rose); }
 .calendar-day.period-day { color: white; background: var(--rose); }
 .calendar-day.predicted-day { color: var(--rose); background: repeating-linear-gradient(135deg, #f6e3e4, #f6e3e4 3px, #fff4f2 3px, #fff4f2 6px); }
+.calendar-day.pms-day:not(.period-day):not(.predicted-day) { color: #725e73; background: #f0e9f0; }
+.calendar-day.ovulation-day:not(.period-day):not(.predicted-day) { color: #506b5a; background: #e5eee8; box-shadow: inset 0 0 0 1.5px #789382; font-weight: 700; }
 .calendar-day.fertile-day:not(.period-day):not(.predicted-day)::after { content: ""; position: absolute; bottom: 2px; width: 4px; height: 4px; border-radius: 50%; background: #8ba797; }
 .calendar-legend { display: flex; justify-content: center; gap: 20px; margin-top: 18px; padding-top: 15px; border-top: 1px solid #f1eae8; color: var(--muted); font-size: 10px; }
 .calendar-legend span { display: flex; align-items: center; gap: 5px; }
-.dot { width: 8px; height: 8px; border-radius: 50%; }.dot.period { background: var(--rose); }.dot.predicted { background: #efd5d7; }.dot.fertile { background: #8ba797; }
+.dot { width: 8px; height: 8px; border-radius: 50%; }.dot.period { background: var(--rose); }.dot.predicted { background: #efd5d7; }.dot.fertile { background: #8ba797; }.dot.ovulation { background: #587663; box-shadow: 0 0 0 2px #dce8df; }.dot.pms { background: #b59fb5; }
 
 .side-column { display: flex; flex-direction: column; gap: 15px; }
 .text-button { display: flex; gap: 6px; align-items: center; padding: 0; border: 0; color: var(--rose); background: transparent; font-size: 11px; font-weight: 600; }

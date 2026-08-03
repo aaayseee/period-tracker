@@ -162,6 +162,8 @@ Opsiyonel `today=YYYY-MM-DD` parametresi test ve deterministik hesaplama için k
   "ovulation_date": "2026-08-15",
   "fertile_window_start": "2026-08-10",
   "fertile_window_end": "2026-08-16",
+  "pms_window_start": "2026-08-22",
+  "pms_window_end": "2026-08-28",
   "days_until_next_period": 26,
   "completed_cycles": 4,
   "confidence": "medium",

@@ -17,6 +17,7 @@ Uygulama yerel kullanım için çalışan bir MVP'dir:
 - Kayıt listeleme, güncelleme ve silme API'leri
 - Ortalama döngü ve regl süresi hesabı
 - Sonraki regl, yumurtlama ve doğurganlık dönemi tahmini
+- Takvimde ayrı ovülasyon günü ve 7 günlük PMS penceresi
 - Takvim, geçmiş kayıtlar ve JSON yedek
 - Responsive React arayüzü
 - Manifest, ikon ve Service Worker içeren PWA kabuğu

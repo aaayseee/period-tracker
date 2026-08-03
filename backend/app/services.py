@@ -65,6 +65,8 @@ def calculate_insights(
     ovulation = next_start - timedelta(days=14)
     fertile_start = ovulation - timedelta(days=5)
     fertile_end = ovulation + timedelta(days=1)
+    pms_start = next_start - timedelta(days=7)
+    pms_end = next_start - timedelta(days=1)
 
     completed_cycles = len(cycle_lengths)
     confidence = "high" if completed_cycles >= 6 else "medium" if completed_cycles >= 3 else "low"
@@ -78,6 +80,8 @@ def calculate_insights(
         ovulation_date=ovulation,
         fertile_window_start=fertile_start,
         fertile_window_end=fertile_end,
+        pms_window_start=pms_start,
+        pms_window_end=pms_end,
         days_until_next_period=(next_start - today).days,
         completed_cycles=completed_cycles,
         confidence=confidence,

@@ -262,6 +262,10 @@ function Calendar({ periods, insights }: { periods: Period[]; insights: Insights
   const fertileDates = useMemo(() => new Set(insights
     ? eachDate(insights.fertile_window_start, insights.fertile_window_end)
     : []), [insights]);
+  const pmsDates = useMemo(() => new Set(insights
+    ? eachDate(insights.pms_window_start, insights.pms_window_end)
+    : []), [insights]);
+  const ovulationDate = insights?.ovulation_date ?? null;
 
   const cells = Array.from({ length: firstWeekday + daysInMonth }, (_, index) => {
     if (index < firstWeekday) return null;
@@ -294,7 +298,9 @@ function Calendar({ periods, insights }: { periods: Period[]; insights: Insights
             iso === todayIso() ? "today" : "",
             periodDates.has(iso) ? "period-day" : "",
             !periodDates.has(iso) && predictedDates.has(iso) ? "predicted-day" : "",
-            fertileDates.has(iso) ? "fertile-day" : ""
+            fertileDates.has(iso) ? "fertile-day" : "",
+            pmsDates.has(iso) ? "pms-day" : "",
+            iso === ovulationDate ? "ovulation-day" : ""
           ].filter(Boolean).join(" ");
           return <span className={classes} key={iso}>{day}</span>;
         })}
@@ -303,6 +309,8 @@ function Calendar({ periods, insights }: { periods: Period[]; insights: Insights
         <span><i className="dot period" /> Regl</span>
         <span><i className="dot predicted" /> Tahmini</span>
         <span><i className="dot fertile" /> Doğurgan dönem</span>
+        <span><i className="dot ovulation" /> Ovülasyon</span>
+        <span><i className="dot pms" /> PMS</span>
       </div>
     </section>
   );

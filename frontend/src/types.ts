@@ -63,6 +63,8 @@ export interface Insights {
   ovulation_date: string;
   fertile_window_start: string;
   fertile_window_end: string;
+  pms_window_start: string;
+  pms_window_end: string;
   days_until_next_period: number;
   completed_cycles: number;
   confidence: "low" | "medium" | "high";

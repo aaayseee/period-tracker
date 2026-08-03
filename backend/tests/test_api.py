@@ -132,6 +132,9 @@ def test_register_logout_and_returning_login(tmp_path):
         assert insights["average_cycle_length"] == 30
         assert insights["average_period_length"] == 5
         assert insights["next_period_start"] == "2026-08-09"
+        assert insights["ovulation_date"] == "2026-07-26"
+        assert insights["pms_window_start"] == "2026-08-02"
+        assert insights["pms_window_end"] == "2026-08-08"
 
         assert client.post("/api/auth/logout").status_code == 204
         assert client.get("/api/profile").status_code == 401

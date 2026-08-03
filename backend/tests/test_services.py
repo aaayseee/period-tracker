@@ -31,6 +31,9 @@ def test_irregular_cycles_use_personal_average():
     assert result.average_cycle_length == 29
     assert result.cycle_variation == 2
     assert result.next_period_start == date(2026, 4, 28)
+    assert result.ovulation_date == date(2026, 4, 14)
+    assert result.pms_window_start == date(2026, 4, 21)
+    assert result.pms_window_end == date(2026, 4, 27)
     assert result.completed_cycles == 3
     assert result.confidence == "medium"
 
@@ -60,4 +63,6 @@ def test_profile_defaults_are_used_without_history():
     assert result.average_cycle_length == 31
     assert result.average_period_length == 6
     assert result.next_period_start == date(2026, 9, 3)
+    assert result.pms_window_start == date(2026, 8, 27)
+    assert result.pms_window_end == date(2026, 9, 2)
     assert result.is_estimate is True

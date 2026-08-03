@@ -30,6 +30,7 @@ Değerlendirme: 1. aşama kişisel MVP kapsamı için doğru şekilde tamamland�
 | Profil varsayımları | Tamamlandı | Geçmiş yetersizse onboarding değerleri kullanılıyor |
 | Sonraki regl tahmini | Tamamlandı | Son başlangıç + kişisel ortalama döngü |
 | Yumurtlama/doğurgan pencere | MVP tamamlandı | Takvim tabanlı yaklaşık hesap; tıbbi model değil |
+| PMS penceresi | MVP tamamlandı | Tahmini reglden önceki 7 gün takvimde ayrı renkle gösteriliyor |
 | API entegrasyonu | Tamamlandı | `GET /api/insights` |
 | Normal döngü testi | Tamamlandı | API testinde 28 günlük düzenli döngü |
 | Erken/geç ve düzensiz test | Tamamlandı | 27, 32 ve 29 günlük serinin ortalama/varyasyon testi |

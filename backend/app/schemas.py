@@ -81,6 +81,8 @@ class Insights(BaseModel):
     ovulation_date: date
     fertile_window_start: date
     fertile_window_end: date
+    pms_window_start: date
+    pms_window_end: date
     days_until_next_period: int
     completed_cycles: int
     confidence: Literal["low", "medium", "high"]
