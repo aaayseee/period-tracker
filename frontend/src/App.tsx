@@ -3,11 +3,13 @@ import {
   ArrowRight,
   CalendarDays,
   Check,
+  Copy,
   ChevronLeft,
   ChevronRight,
   Download,
   Droplets,
   Heart,
+  KeyRound,
   LogOut,
   LoaderCircle,
   LockKeyhole,
@@ -29,6 +31,8 @@ import type {
   Insights,
   Period,
   PeriodPayload,
+  PasswordChangePayload,
+  PasswordRecoveryPayload,
   Profile,
   ProfileUpdatePayload
 } from "./types";
@@ -61,7 +65,7 @@ function eachDate(start: string, end: string): string[] {
 }
 
 function Onboarding({ onComplete }: { onComplete: () => Promise<void> }) {
-  const [mode, setMode] = useState<"register" | "login">("register");
+  const [mode, setMode] = useState<"register" | "login" | "recover">("register");
   const [form, setForm] = useState<AccountRegisterPayload>({
     name: "",
     email: "",
@@ -74,6 +78,13 @@ function Onboarding({ onComplete }: { onComplete: () => Promise<void> }) {
     email: "",
     password: ""
   });
+  const [recoveryForm, setRecoveryForm] = useState<PasswordRecoveryPayload>({
+    email: "",
+    recovery_code: "",
+    new_password: ""
+  });
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -83,7 +94,15 @@ function Onboarding({ onComplete }: { onComplete: () => Promise<void> }) {
     setError("");
     try {
       if (mode === "register") {
-        await api.register(form);
+        const result = await api.register(form);
+        setRecoveryCode(result.recovery_code);
+        setSaving(false);
+        return;
+      } else if (mode === "recover") {
+        const result = await api.recoverPassword(recoveryForm);
+        setRecoveryCode(result.recovery_code);
+        setSaving(false);
+        return;
       } else {
         await api.login(loginForm);
       }
@@ -94,18 +113,49 @@ function Onboarding({ onComplete }: { onComplete: () => Promise<void> }) {
     }
   };
 
-  const switchMode = (nextMode: "register" | "login") => {
+  const switchMode = (nextMode: "register" | "login" | "recover") => {
     setMode(nextMode);
     setError("");
   };
+
+  const copyRecoveryCode = async () => {
+    await navigator.clipboard.writeText(recoveryCode);
+    setCopied(true);
+  };
+
+  if (recoveryCode) {
+    return (
+      <section className="onboarding recovery-onboarding">
+        <div className="onboarding-intro">
+          <span className="onboarding-icon"><ShieldCheck size={27} /></span>
+          <span className="eyebrow"><KeyRound size={13} /> HESAP KURTARMA</span>
+          <h1>Kodunu güvenli bir yerde <em>sakla.</em></h1>
+          <p>Parolanı unutursan hesabına yalnızca bu kodla yeniden erişebilirsin.</p>
+        </div>
+        <div className="onboarding-form recovery-card panel">
+          <span className="eyebrow">YENİ KURTARMA KODUN</span>
+          <h2>Bu kod yalnızca şimdi gösterilecek</h2>
+          <p>Ekran görüntüsü alabilir veya çevrimdışı bir parola yöneticisine kaydedebilirsin.</p>
+          <code className="recovery-code">{recoveryCode}</code>
+          <button type="button" className="secondary-button full-width" onClick={copyRecoveryCode}>
+            <Copy size={16} /> {copied ? "Kopyalandı" : "Kodu kopyala"}
+          </button>
+          <button type="button" className="primary-button full-width" onClick={onComplete}>
+            <Check size={17} /> Kodu güvenle kaydettim
+          </button>
+          <p className="recovery-warning">Bu kodu kaybedersen ve parolanı unutursan hesabın otomatik olarak kurtarılamaz.</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="onboarding">
       <div className="onboarding-intro">
         <span className="onboarding-icon"><MoonStar size={27} /></span>
         <span className="eyebrow"><Sparkles size={13} /> KİŞİSEL DÖNGÜ ALANIN</span>
-        <h1>{mode === "register" ? <>Döngünü birlikte <em>tanıyalım.</em></> : <>Tekrar <em>hoş geldin.</em></>}</h1>
-        <p>{mode === "register" ? "Birkaç temel bilgiyle takvimini ve ilk tahminlerini kişiselleştireceğiz." : "Hesabına giriş yaparak kaldığın yerden devam et."}</p>
+        <h1>{mode === "register" ? <>Döngünü birlikte <em>tanıyalım.</em></> : mode === "login" ? <>Tekrar <em>hoş geldin.</em></> : <>Hesabını birlikte <em>kurtaralım.</em></>}</h1>
+        <p>{mode === "register" ? "Birkaç temel bilgiyle takvimini ve ilk tahminlerini kişiselleştireceğiz." : mode === "login" ? "Hesabına giriş yaparak kaldığın yerden devam et." : "Kurtarma kodunla güvenli şekilde yeni bir parola belirle."}</p>
         <div className="privacy-note">
           <ShieldCheck size={20} />
           <div><strong>Verilerin senin kontrolünde</strong><span>Parolan güvenli şekilde hash’lenir; hiçbir zaman düz metin saklanmaz.</span></div>
@@ -118,9 +168,9 @@ function Onboarding({ onComplete }: { onComplete: () => Promise<void> }) {
           <button type="button" className={mode === "login" ? "active" : ""} onClick={() => switchMode("login")}>Hesabım var</button>
         </div>
         <div className="onboarding-title">
-          <span className="eyebrow">{mode === "register" ? "HESABINI OLUŞTUR" : "GİRİŞ YAP"}</span>
-          <h2>{mode === "register" ? "Merhaba, seni nasıl tanıyalım?" : "Kişisel takvimine dön"}</h2>
-          <p>{mode === "register" ? "Bilgilerin ilk kişisel tahminlerinin temelini oluşturur." : "Hesabını oluştururken kullandığın bilgileri gir."}</p>
+          <span className="eyebrow">{mode === "register" ? "HESABINI OLUŞTUR" : mode === "login" ? "GİRİŞ YAP" : "PAROLANI YENİLE"}</span>
+          <h2>{mode === "register" ? "Merhaba, seni nasıl tanıyalım?" : mode === "login" ? "Kişisel takvimine dön" : "Kurtarma bilgilerini gir"}</h2>
+          <p>{mode === "register" ? "Bilgilerin ilk kişisel tahminlerinin temelini oluşturur." : mode === "login" ? "Hesabını oluştururken kullandığın bilgileri gir." : "Kullanılan kurtarma kodu işlemden sonra yenilenecek."}</p>
         </div>
 
         {mode === "register" ? (
@@ -205,7 +255,7 @@ function Onboarding({ onComplete }: { onComplete: () => Promise<void> }) {
               </label>
             </div>
           </>
-        ) : (
+        ) : mode === "login" ? (
           <div className="login-fields">
           <label>
             E-posta
@@ -231,15 +281,54 @@ function Onboarding({ onComplete }: { onComplete: () => Promise<void> }) {
               onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })}
             />
           </label>
+          <button type="button" className="forgot-button" onClick={() => switchMode("recover")}>Parolamı unuttum</button>
+          </div>
+        ) : (
+          <div className="login-fields recovery-fields">
+            <label>
+              E-posta
+              <input
+                required
+                autoFocus
+                type="email"
+                autoComplete="email"
+                placeholder="ayse@ornek.com"
+                value={recoveryForm.email}
+                onChange={(event) => setRecoveryForm({ ...recoveryForm, email: event.target.value })}
+              />
+            </label>
+            <label>
+              Kurtarma kodu
+              <input
+                required
+                autoComplete="off"
+                placeholder="XXXXX-XXXXX-XXXXX-XXXXX"
+                value={recoveryForm.recovery_code}
+                onChange={(event) => setRecoveryForm({ ...recoveryForm, recovery_code: event.target.value })}
+              />
+            </label>
+            <label>
+              Yeni parola
+              <input
+                required
+                type="password"
+                minLength={8}
+                autoComplete="new-password"
+                placeholder="En az 8 karakter"
+                value={recoveryForm.new_password}
+                onChange={(event) => setRecoveryForm({ ...recoveryForm, new_password: event.target.value })}
+              />
+            </label>
+            <button type="button" className="forgot-button" onClick={() => switchMode("login")}>Giriş ekranına dön</button>
           </div>
         )}
 
         {error && <p className="form-error">{error}</p>}
         <button className="primary-button full-width onboarding-submit" disabled={saving}>
           {saving ? <LoaderCircle className="spin" size={18} /> : <ArrowRight size={18} />}
-          {mode === "register" ? "Hesabımı ve takvimimi oluştur" : "Hesabıma giriş yap"}
+          {mode === "register" ? "Hesabımı ve takvimimi oluştur" : mode === "login" ? "Hesabıma giriş yap" : "Parolamı yenile"}
         </button>
-        <p className="medical-caption">{mode === "register" ? "Tahminler yaklaşık bilgi sağlar ve tıbbi öneri değildir." : "Oturumun bu cihazda güvenli şekilde hatırlanır."}</p>
+        <p className="medical-caption">{mode === "register" ? "Tahminler yaklaşık bilgi sağlar ve tıbbi öneri değildir." : mode === "login" ? "Oturumun bu cihazda güvenli şekilde hatırlanır." : "Başarılı işlemden sonra yeni bir kurtarma kodu verilir."}</p>
       </form>
     </section>
   );
@@ -414,6 +503,14 @@ function SettingsModal({
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [passwordForm, setPasswordForm] = useState<PasswordChangePayload>({
+    current_password: "",
+    new_password: ""
+  });
+  const [securitySaving, setSecuritySaving] = useState(false);
+  const [securityError, setSecurityError] = useState("");
+  const [securitySuccess, setSecuritySuccess] = useState("");
+  const [settingsRecoveryCode, setSettingsRecoveryCode] = useState("");
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -425,6 +522,37 @@ function SettingsModal({
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Ayarlar kaydedilemedi.");
       setSaving(false);
+    }
+  };
+
+  const submitPassword = async (event: FormEvent) => {
+    event.preventDefault();
+    setSecuritySaving(true);
+    setSecurityError("");
+    setSecuritySuccess("");
+    try {
+      await api.changePassword(passwordForm);
+      setPasswordForm({ current_password: "", new_password: "" });
+      setSecuritySuccess("Parolan değiştirildi; diğer açık oturumlar kapatıldı.");
+    } catch (caught) {
+      setSecurityError(caught instanceof Error ? caught.message : "Parola değiştirilemedi.");
+    } finally {
+      setSecuritySaving(false);
+    }
+  };
+
+  const createRecoveryCode = async () => {
+    if (window.confirm("Yeni kod oluşturulursa önceki kurtarma kodun geçersiz olacak. Devam edilsin mi?")) {
+      setSecuritySaving(true);
+      setSecurityError("");
+      try {
+        const result = await api.rotateRecoveryCode();
+        setSettingsRecoveryCode(result.recovery_code);
+      } catch (caught) {
+        setSecurityError(caught instanceof Error ? caught.message : "Kurtarma kodu oluşturulamadı.");
+      } finally {
+        setSecuritySaving(false);
+      }
     }
   };
 
@@ -459,6 +587,36 @@ function SettingsModal({
             {saving ? <LoaderCircle className="spin" size={18} /> : <Check size={18} />} Ayarları kaydet
           </button>
         </form>
+        <div className="settings-divider" />
+        <div className="security-section">
+          <span className="eyebrow">HESAP GÜVENLİĞİ</span>
+          <h3>Parolanı değiştir</h3>
+          <form onSubmit={submitPassword}>
+            <div className="auth-credentials-grid">
+              <label>Mevcut parola<input required type="password" minLength={8} autoComplete="current-password" value={passwordForm.current_password} onChange={(event) => setPasswordForm({ ...passwordForm, current_password: event.target.value })} /></label>
+              <label>Yeni parola<input required type="password" minLength={8} autoComplete="new-password" value={passwordForm.new_password} onChange={(event) => setPasswordForm({ ...passwordForm, new_password: event.target.value })} /></label>
+            </div>
+            <button className="secondary-button full-width" type="submit" disabled={securitySaving}><KeyRound size={16} /> Parolayı değiştir</button>
+          </form>
+          <div className="recovery-settings">
+            <strong>Kurtarma kodu</strong>
+            <p>Parolanı unutursan hesabına bu kodla erişebilirsin. Yeni kod oluşturmak önceki kodu geçersiz kılar.</p>
+            {settingsRecoveryCode && (
+              <>
+                <code className="recovery-code compact">{settingsRecoveryCode}</code>
+                <button type="button" className="secondary-button full-width" onClick={async () => {
+                  await navigator.clipboard.writeText(settingsRecoveryCode);
+                  setSecuritySuccess("Kurtarma kodu panoya kopyalandı.");
+                }}><Copy size={15} /> Kodu kopyala</button>
+              </>
+            )}
+            <button type="button" className="secondary-button full-width" onClick={createRecoveryCode} disabled={securitySaving}>
+              <ShieldCheck size={16} /> Yeni kurtarma kodu oluştur
+            </button>
+          </div>
+          {securityError && <p className="form-error">{securityError}</p>}
+          {securitySuccess && <p className="form-success">{securitySuccess}</p>}
+        </div>
       </section>
     </div>
   );

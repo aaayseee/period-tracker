@@ -13,12 +13,15 @@ from .auth import (
     SESSION_COOKIE,
     SESSION_DAYS,
     create_session,
+    generate_recovery_code,
     get_optional_account,
     hash_password,
+    hash_recovery_code,
     hash_session_token,
     normalize_email,
     require_account,
     verify_password,
+    verify_recovery_code,
 )
 from .schemas import (
     AccountLogin,
@@ -29,8 +32,13 @@ from .schemas import (
     Period,
     PeriodCreate,
     PeriodUpdate,
+    PasswordChange,
+    PasswordRecovery,
+    PasswordRecoveryResult,
     Profile,
     ProfileUpdate,
+    RecoveryCodeResult,
+    RegistrationResult,
 )
 from .services import calculate_insights, row_to_period, row_to_profile, utc_now
 
@@ -84,12 +92,12 @@ def set_session_cookie(response: Response, token: str) -> None:
     )
 
 
-@app.post("/api/auth/register", response_model=AuthSession)
+@app.post("/api/auth/register", response_model=RegistrationResult)
 def register(
     payload: AccountRegister,
     response: Response,
     connection: sqlite3.Connection = Depends(get_connection),
-) -> AuthSession:
+) -> RegistrationResult:
     existing_account = connection.execute(
         "SELECT id FROM accounts LIMIT 1"
     ).fetchone()
@@ -104,16 +112,19 @@ def register(
         raise HTTPException(status_code=422, detail="Isim bos birakilamaz.")
     email = normalize_email(payload.email)
     salt, password_digest = hash_password(payload.password)
+    recovery_code = generate_recovery_code()
     period_end = payload.last_period_start + timedelta(
         days=payload.average_period_length - 1
     )
 
     connection.execute(
         """
-        INSERT INTO accounts (id, email, password_hash, password_salt)
-        VALUES (1, ?, ?, ?)
+        INSERT INTO accounts (
+            id, email, password_hash, password_salt, recovery_code_hash
+        )
+        VALUES (1, ?, ?, ?, ?)
         """,
-        (email, password_digest, salt),
+        (email, password_digest, salt, hash_recovery_code(recovery_code)),
     )
     connection.execute(
         """
@@ -143,7 +154,7 @@ def register(
 
     token = create_session(connection, 1)
     set_session_cookie(response, token)
-    return AuthSession(email=email)
+    return RegistrationResult(email=email, recovery_code=recovery_code)
 
 
 @app.post("/api/auth/login", response_model=AuthSession)
@@ -176,6 +187,120 @@ def auth_session(
     account: Optional[sqlite3.Row] = Depends(get_optional_account),
 ) -> Optional[AuthSession]:
     return AuthSession(email=account["email"]) if account else None
+
+
+@app.post(
+    "/api/auth/change-password",
+    response_model=AuthSession,
+)
+def change_password(
+    payload: PasswordChange,
+    response: Response,
+    account: sqlite3.Row = Depends(require_account),
+    connection: sqlite3.Connection = Depends(get_connection),
+) -> AuthSession:
+    if not verify_password(
+        payload.current_password,
+        account["password_salt"],
+        account["password_hash"],
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Mevcut parola hatali.",
+        )
+    if payload.current_password == payload.new_password:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Yeni parola mevcut paroladan farkli olmali.",
+        )
+
+    salt, password_digest = hash_password(payload.new_password)
+    connection.execute(
+        """
+        UPDATE accounts
+        SET password_hash = ?, password_salt = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (password_digest, salt, account["id"]),
+    )
+    connection.execute(
+        "DELETE FROM sessions WHERE account_id = ?", (account["id"],)
+    )
+    connection.commit()
+    token = create_session(connection, account["id"])
+    set_session_cookie(response, token)
+    return AuthSession(email=account["email"])
+
+
+@app.post(
+    "/api/auth/recovery-code",
+    response_model=RecoveryCodeResult,
+)
+def rotate_recovery_code(
+    account: sqlite3.Row = Depends(require_account),
+    connection: sqlite3.Connection = Depends(get_connection),
+) -> RecoveryCodeResult:
+    recovery_code = generate_recovery_code()
+    connection.execute(
+        """
+        UPDATE accounts
+        SET recovery_code_hash = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (hash_recovery_code(recovery_code), account["id"]),
+    )
+    connection.commit()
+    return RecoveryCodeResult(recovery_code=recovery_code)
+
+
+@app.post(
+    "/api/auth/recover",
+    response_model=PasswordRecoveryResult,
+)
+def recover_password(
+    payload: PasswordRecovery,
+    response: Response,
+    connection: sqlite3.Connection = Depends(get_connection),
+) -> PasswordRecoveryResult:
+    email = normalize_email(payload.email)
+    account = connection.execute(
+        "SELECT * FROM accounts WHERE email = ? COLLATE NOCASE", (email,)
+    ).fetchone()
+    if account is None or not verify_recovery_code(
+        payload.recovery_code,
+        account["recovery_code_hash"],
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="E-posta veya kurtarma kodu hatali.",
+        )
+
+    salt, password_digest = hash_password(payload.new_password)
+    new_recovery_code = generate_recovery_code()
+    connection.execute(
+        """
+        UPDATE accounts
+        SET password_hash = ?, password_salt = ?, recovery_code_hash = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (
+            password_digest,
+            salt,
+            hash_recovery_code(new_recovery_code),
+            account["id"],
+        ),
+    )
+    connection.execute(
+        "DELETE FROM sessions WHERE account_id = ?", (account["id"],)
+    )
+    connection.commit()
+    token = create_session(connection, account["id"])
+    set_session_cookie(response, token)
+    return PasswordRecoveryResult(
+        email=account["email"],
+        recovery_code=new_recovery_code,
+    )
 
 
 @app.post("/api/auth/logout", status_code=status.HTTP_204_NO_CONTENT)

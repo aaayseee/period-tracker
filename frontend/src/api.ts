@@ -5,8 +5,13 @@ import type {
   Insights,
   Period,
   PeriodPayload,
+  PasswordChangePayload,
+  PasswordRecoveryPayload,
+  PasswordRecoveryResult,
   Profile,
-  ProfileUpdatePayload
+  ProfileUpdatePayload,
+  RecoveryCodeResult,
+  RegistrationResult
 } from "./types";
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
@@ -37,7 +42,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 export const api = {
   getSession: () => request<AuthSession | null>("/api/auth/session"),
   register: (payload: AccountRegisterPayload) =>
-    request<AuthSession>("/api/auth/register", {
+    request<RegistrationResult>("/api/auth/register", {
       method: "POST",
       body: JSON.stringify(payload)
     }),
@@ -46,6 +51,18 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload)
     }),
+  recoverPassword: (payload: PasswordRecoveryPayload) =>
+    request<PasswordRecoveryResult>("/api/auth/recover", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
+  changePassword: (payload: PasswordChangePayload) =>
+    request<AuthSession>("/api/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
+  rotateRecoveryCode: () =>
+    request<RecoveryCodeResult>("/api/auth/recovery-code", { method: "POST" }),
   logout: () => request<void>("/api/auth/logout", { method: "POST" }),
   getProfile: () => request<Profile | null>("/api/profile"),
   updateProfile: (payload: ProfileUpdatePayload) =>

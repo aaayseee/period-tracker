@@ -165,3 +165,84 @@ def test_only_one_account_can_be_registered(tmp_path):
             password="baska-guvenli-parola",
         )
         assert duplicate.status_code == 409
+
+
+def test_password_change_and_recovery_code_flow(tmp_path):
+    with build_client(tmp_path) as client:
+        registration = register(client)
+        assert registration.status_code == 200
+        original_recovery_code = registration.json()["recovery_code"]
+        assert len(original_recovery_code.replace("-", "")) == 20
+
+        wrong_change = client.post(
+            "/api/auth/change-password",
+            json={
+                "current_password": "yanlis-parola",
+                "new_password": "yeni-guvenli-parola",
+            },
+        )
+        assert wrong_change.status_code == 401
+
+        changed = client.post(
+            "/api/auth/change-password",
+            json={
+                "current_password": "guvenli-parola-123",
+                "new_password": "yeni-guvenli-parola",
+            },
+        )
+        assert changed.status_code == 200
+        assert client.get("/api/auth/session").json()["email"] == "ayse@example.com"
+
+        rotated = client.post("/api/auth/recovery-code")
+        assert rotated.status_code == 200
+        active_recovery_code = rotated.json()["recovery_code"]
+        assert active_recovery_code != original_recovery_code
+
+        client.post("/api/auth/logout")
+        assert client.post(
+            "/api/auth/login",
+            json={
+                "email": "ayse@example.com",
+                "password": "guvenli-parola-123",
+            },
+        ).status_code == 401
+        assert client.post(
+            "/api/auth/login",
+            json={
+                "email": "ayse@example.com",
+                "password": "yeni-guvenli-parola",
+            },
+        ).status_code == 200
+        client.post("/api/auth/logout")
+
+        old_code = client.post(
+            "/api/auth/recover",
+            json={
+                "email": "ayse@example.com",
+                "recovery_code": original_recovery_code,
+                "new_password": "kurtarilan-parola",
+            },
+        )
+        assert old_code.status_code == 401
+
+        recovered = client.post(
+            "/api/auth/recover",
+            json={
+                "email": "ayse@example.com",
+                "recovery_code": active_recovery_code.lower(),
+                "new_password": "kurtarilan-parola",
+            },
+        )
+        assert recovered.status_code == 200
+        new_recovery_code = recovered.json()["recovery_code"]
+        assert new_recovery_code != active_recovery_code
+        assert client.get("/api/profile").status_code == 200
+
+        client.post("/api/auth/logout")
+        assert client.post(
+            "/api/auth/login",
+            json={
+                "email": "ayse@example.com",
+                "password": "kurtarilan-parola",
+            },
+        ).status_code == 200

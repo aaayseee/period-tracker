@@ -18,6 +18,7 @@
 | Veritabanı bağlantısı | Tamamlandı | İstek başına açılıp kapanan `sqlite3.Connection`, row factory ve foreign key kontrolü |
 | Tarihleri kaydetme/okuma | Tamamlandı | List, create, update ve delete endpoint'leri |
 | Hesap/session | Tamamlandı | Kayıt, giriş, çıkış, session kontrolü ve korumalı veri uçları |
+| Parola değiştirme/kurtarma | Tamamlandı | Parola değişimi, hash'li kurtarma kodu, kod rotasyonu ve eski session iptali |
 
 Değerlendirme: 1. aşama kişisel MVP kapsamı için doğru şekilde tamamlandı. Production büyümesi için versiyonlu migration sistemi eksik.
 
@@ -86,7 +87,7 @@ Bu nedenle doğru ifade:
 3. Gerçek domain CORS ayarı
 4. Login rate limiting
 5. Şifreli, geri yüklemesi test edilmiş yedek
-6. Parola kurtarma veya recovery code
+6. Auth ve recovery endpoint'leri için rate limiting
 
 ### P1 — Sağlamlık
 

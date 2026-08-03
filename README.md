@@ -9,6 +9,7 @@ Luna; store zorunluluğu olmadan tarayıcıdan kullanılabilen ve telefona PWA o
 Uygulama yerel kullanım için çalışan bir MVP'dir:
 
 - E-posta/parola ile hesap oluşturma ve giriş
+- Parola değiştirme ve tek kullanımlık gösterilen kurtarma kodu
 - PBKDF2 ile tuzlanmış parola hash'i
 - 30 günlük, sunucu tarafında doğrulanan HttpOnly oturum
 - Regl başlangıç/bitiş tarihi, akış, belirti ve not kaydı
@@ -127,9 +128,10 @@ Uygulama http://localhost:5173 adresinde açılır. Vite, `/api` isteklerini oto
 1. http://localhost:5173 adresini aç.
 2. Yeni kullanıcıysan **İlk kez kullanıyorum** bölümünü seç.
 3. İsim, e-posta, en az 8 karakterlik parola, son regl tarihi ve ortalamaları gir.
-4. Daha önce hesap oluşturduysan **Hesabım var** bölümünden giriş yap.
-5. **Reglim başladı** ile hızlı aktif kayıt aç veya **Yeni kayıt** ile ayrıntıları gir.
-6. Geçmiş kayıtlardaki kalem ikonuyla düzenleme yap; **Ayarlar** bölümünden profil ortalamalarını güncelle.
+4. Gösterilen kurtarma kodunu parola yöneticisi gibi güvenli bir yerde sakla.
+5. Daha önce hesap oluşturduysan **Hesabım var** bölümünden giriş yap; parolanı unuttuysan kurtarma kodunu kullan.
+6. **Reglim başladı** ile hızlı aktif kayıt aç veya **Yeni kayıt** ile ayrıntıları gir.
+7. Geçmiş kayıtlardaki kalem ikonuyla düzenleme yap; **Ayarlar** bölümünden profil, parola ve kurtarma kodunu yönet.
 
 Oturum varsayılan olarak 30 gün geçerlidir. Süre dolduğunda hesap veya döngü verileri silinmez; yalnızca yeniden giriş gerekir.
 

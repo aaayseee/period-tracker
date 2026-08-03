@@ -51,6 +51,26 @@ def hash_session_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+def generate_recovery_code() -> str:
+    raw_code = secrets.token_hex(10).upper()
+    return "-".join(raw_code[index:index + 5] for index in range(0, 20, 5))
+
+
+def normalize_recovery_code(code: str) -> str:
+    return "".join(character for character in code.upper() if character.isalnum())
+
+
+def hash_recovery_code(code: str) -> str:
+    normalized = normalize_recovery_code(code)
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def verify_recovery_code(code: str, expected_hash: Optional[str]) -> bool:
+    if not expected_hash:
+        return False
+    return hmac.compare_digest(hash_recovery_code(code), expected_hash)
+
+
 def create_session(connection: sqlite3.Connection, account_id: int) -> str:
     token = secrets.token_urlsafe(32)
     expires_at = datetime.utcnow() + timedelta(days=SESSION_DAYS)

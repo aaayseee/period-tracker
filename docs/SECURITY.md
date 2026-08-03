@@ -63,6 +63,7 @@ Public endpoint'ler:
 - `GET /health`
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `POST /api/auth/recover`
 - `GET /api/auth/session`
 - `POST /api/auth/logout`
 
@@ -102,7 +103,15 @@ Mevcut sürüm şu ortamı hedefler:
 
 ## Kayıp parola
 
-Şu anda parola sıfırlama akışı yoktur. Parola unutulursa veritabanına doğrudan müdahale etmeden hesabı kurtarmanın kullanıcı arayüzü bulunmaz. Production öncesi güvenli parola sıfırlama veya tek kullanımlık recovery code eklenmelidir.
+Hesap oluşturulurken 80-bit rastgele bir kurtarma kodu kullanıcıya bir kez gösterilir. Veritabanında kodun yalnızca SHA-256 hash'i saklanır.
+
+- Kullanıcı kodu güvenli bir yerde saklamalıdır.
+- Kod kullanılarak parola yenilendiğinde yeni bir kurtarma kodu üretilir.
+- Ayarlardan yeni kod oluşturmak eski kodu geçersiz kılar.
+- Parola değişikliği veya kurtarma tüm eski session'ları kapatır.
+- Parola ve kurtarma kodu birlikte kaybedilirse otomatik hesap kurtarma mümkün değildir.
+
+Production ortamında kurtarma endpoint'i için rate limiting zorunludur.
 
 ## Veritabanı ve yedek
 

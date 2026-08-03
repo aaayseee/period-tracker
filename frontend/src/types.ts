@@ -54,6 +54,29 @@ export interface AuthSession {
   email: string;
 }
 
+export interface RegistrationResult extends AuthSession {
+  recovery_code: string;
+}
+
+export interface PasswordChangePayload {
+  current_password: string;
+  new_password: string;
+}
+
+export interface PasswordRecoveryPayload {
+  email: string;
+  recovery_code: string;
+  new_password: string;
+}
+
+export interface PasswordRecoveryResult extends AuthSession {
+  recovery_code: string;
+}
+
+export interface RecoveryCodeResult {
+  recovery_code: string;
+}
+
 export interface Insights {
   average_cycle_length: number;
   average_period_length: number;

@@ -45,11 +45,12 @@ Başarılı yanıt:
 
 ```json
 {
-  "email": "ayse@example.com"
+  "email": "ayse@example.com",
+  "recovery_code": "XXXXX-XXXXX-XXXXX-XXXXX"
 }
 ```
 
-Zaten hesap varsa `409 Conflict` döner.
+Kurtarma kodu yalnızca bu yanıtta açık biçimde gösterilir. Zaten hesap varsa `409 Conflict` döner.
 
 ### `POST /api/auth/login`
 
@@ -77,6 +78,33 @@ Oturum yoksa `null` döner. Bu endpoint public'tir.
 ### `POST /api/auth/logout`
 
 Mevcut session'ı veritabanından siler, cookie'yi temizler ve `204 No Content` döner.
+
+### `POST /api/auth/change-password`
+
+Korumalıdır. Mevcut parolayı doğrular, yeni parola hash'ini yazar, diğer session'ları kapatır ve mevcut cihaz için yeni session oluşturur.
+
+```json
+{
+  "current_password": "eski-parola",
+  "new_password": "yeni-guvenli-parola"
+}
+```
+
+### `POST /api/auth/recovery-code`
+
+Korumalıdır. Yeni bir kurtarma kodu oluşturur ve önceki kodu geçersiz kılar. Kodun yalnızca hash'i saklanır.
+
+### `POST /api/auth/recover`
+
+E-posta, kurtarma kodu ve yeni parolayla hesabı kurtarır. Başarılı işlem tüm eski session'ları kapatır, yeni session ve yeni kurtarma kodu üretir.
+
+```json
+{
+  "email": "ayse@example.com",
+  "recovery_code": "XXXXX-XXXXX-XXXXX-XXXXX",
+  "new_password": "yeni-guvenli-parola"
+}
+```
 
 ## Profil endpoint'leri
 

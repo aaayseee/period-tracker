@@ -57,6 +57,7 @@ def init_database(path: Optional[Path] = None) -> None:
                 email TEXT NOT NULL UNIQUE COLLATE NOCASE,
                 password_hash TEXT NOT NULL,
                 password_salt TEXT NOT NULL,
+                recovery_code_hash TEXT,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
@@ -73,6 +74,15 @@ def init_database(path: Optional[Path] = None) -> None:
             ON sessions(expires_at);
             """
         )
+        account_columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(accounts)").fetchall()
+        }
+        if "recovery_code_hash" not in account_columns:
+            connection.execute(
+                "ALTER TABLE accounts ADD COLUMN recovery_code_hash TEXT"
+            )
+        connection.commit()
 
 
 def get_connection() -> Iterator[sqlite3.Connection]:

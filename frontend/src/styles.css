@@ -122,6 +122,8 @@ main { max-width: 1180px; margin: 0 auto; padding: 50px 28px 72px; }
 .auth-credentials-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .login-fields { padding: 10px 0 23px; }
 .login-fields label { margin-bottom: 18px; }
+.forgot-button { display: block; margin: -7px 0 4px auto; padding: 5px 0; border: 0; color: var(--rose); background: transparent; font-size: 10px; font-weight: 600; }
+.forgot-button:hover { color: var(--rose-dark); text-decoration: underline; }
 .step-indicator { display: flex; align-items: center; justify-content: center; margin-bottom: 25px; }
 .step-indicator span { width: 23px; height: 23px; display: grid; place-items: center; color: #aa9b9e; border: 1px solid var(--line); border-radius: 50%; font-size: 9px; font-weight: 700; }
 .step-indicator span:first-child { color: white; border-color: var(--rose); background: var(--rose); }
@@ -133,8 +135,21 @@ main { max-width: 1180px; margin: 0 auto; padding: 50px 28px 72px; }
 .number-input { position: relative; }.number-input input { padding-right: 44px; }.number-input span { position: absolute; top: 50%; right: 13px; transform: translateY(-50%); color: var(--muted); font-size: 10px; }
 .onboarding-submit { min-height: 44px; margin-top: 2px; }
 .medical-caption { margin: 11px 0 0; color: #a29598; font-size: 8px; text-align: center; }
+.recovery-onboarding { max-width: 920px; }
+.recovery-card { text-align: center; }
+.recovery-card .eyebrow { justify-content: center; }
+.recovery-card h2 { margin: 7px 0 8px; font-size: 21px; }
+.recovery-card > p { margin: 0 auto 18px; max-width: 360px; color: var(--muted); font-size: 10px; line-height: 1.6; }
+.recovery-code { display: block; margin: 20px 0; padding: 17px 12px; border: 1px dashed #c99da7; border-radius: 13px; color: var(--rose-dark); background: #fbf1f1; font-family: Consolas, "Courier New", monospace; font-size: 18px; font-weight: 700; letter-spacing: 1.4px; user-select: all; }
+.recovery-code.compact { margin: 12px 0; padding: 12px 8px; font-size: 14px; }
+.recovery-card .recovery-warning { margin-top: 13px; color: #9b7078; font-size: 8px; }
 .settings-modal { width: min(500px, 100%); }
 .settings-hint { margin: -2px 0 15px; padding: 11px 12px; color: var(--muted); border-radius: 10px; background: #f8f4f2; font-size: 9px; line-height: 1.5; }
+.settings-divider { height: 1px; margin: 25px 0; background: var(--line); }
+.security-section h3 { margin: 5px 0 16px; font-size: 16px; }
+.recovery-settings { margin-top: 20px; padding: 15px; border: 1px solid #e6dcdf; border-radius: 13px; background: #faf6f5; }
+.recovery-settings strong { font-size: 11px; }.recovery-settings p { margin: 4px 0 10px; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.form-success { margin: 10px 0 0; color: #50705b; font-size: 10px; }
 
 .modal-backdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(41, 31, 34, .42); backdrop-filter: blur(5px); animation: fade-in .18s ease; }
 .modal { width: min(560px, 100%); max-height: calc(100vh - 34px); overflow: auto; padding: 26px; border-radius: 24px; background: var(--surface); box-shadow: 0 30px 80px rgba(43, 27, 31, .2); animation: rise .22s ease; }
