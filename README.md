@@ -21,6 +21,7 @@ Uygulama yerel kullanım için çalışan bir MVP'dir:
 - Takvimde ayrı ovülasyon günü ve 7 günlük PMS penceresi
 - Takvim, geçmiş kayıtlar, JSON yedek alma ve geri yükleme
 - Sürümlü, transaction destekli SQLite migration sistemi
+- Docker Compose ile tek komutluk, kalıcı verili kurulum
 - Responsive React arayüzü
 - Manifest, ikon ve Service Worker içeren PWA kabuğu
 
@@ -36,10 +37,17 @@ Uygulama yerel kullanım için çalışan bir MVP'dir:
 | Veri doğrulama | Pydantic | İstek/yanıt şemaları |
 | Veritabanı | SQLite | Profil, hesap, session ve döngü kayıtları |
 | Migration | Yerel Python migration runner | Sıralı şema yükseltme, geçmiş ve rollback |
+| Container | Docker Compose + Nginx | Production build, reverse proxy ve kalıcı SQLite volume |
 | Test | Pytest + FastAPI TestClient | API, auth ve tahmin algoritması testleri |
 | PWA | Web App Manifest + Service Worker | Kurulabilir uygulama kabuğu |
 
 ## Gereksinimler
+
+En kolay kurulum için:
+
+- Docker Desktop ve Docker Compose
+
+Docker kullanmadan geliştirmek için:
 
 - Python 3.9 veya üzeri
 - Node.js 20 veya üzeri
@@ -55,6 +63,24 @@ npm.cmd --version
 ```
 
 PowerShell yürütme politikası nedeniyle `npm` komutu engellenirse Windows'ta `npm.cmd` kullan.
+
+## Docker ile tek komutla kurulum
+
+Docker Desktop'ın çalıştığından emin ol, repository kökünde şu komutu çalıştır:
+
+```powershell
+docker compose up --build -d
+```
+
+Ardından uygulamayı http://localhost:8080 adresinde aç. SQLite verisi `luna-period-tracker_luna-data` named volume'ünde kalıcı tutulur.
+
+```powershell
+docker compose ps
+docker compose logs -f
+docker compose down
+```
+
+`docker compose down` container'ları kapatır fakat veriyi korur. **`docker compose down -v` volume'ü ve tüm uygulama verilerini siler.** Ayrıntılı kullanım ve sorun giderme: [Docker kurulumu](docs/DOCKER.md).
 
 ## İlk kurulum
 
@@ -81,7 +107,7 @@ PowerShell izinlerinden etkilenmez:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
@@ -90,7 +116,7 @@ PowerShell izinlerinden etkilenmez:
 ```powershell
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 uvicorn app.main:app --reload
 ```
 
@@ -215,11 +241,16 @@ period-tracker/
 │   │   ├── schemas.py     # Pydantic veri sözleşmeleri
 │   │   └── services.py    # Tahmin algoritması ve dönüşümler
 │   ├── tests/             # API, auth ve algoritma testleri
-│   └── requirements.txt
+│   ├── Dockerfile
+│   ├── requirements.txt   # Production bağımlılıkları
+│   └── requirements-dev.txt
 ├── frontend/
 │   ├── public/            # Manifest, Service Worker ve ikon
 │   ├── src/               # React uygulaması, stiller, API ve tipler
+│   ├── Dockerfile
+│   ├── nginx.conf
 │   └── package.json
+├── compose.yaml
 └── docs/
 ```
 
@@ -271,6 +302,7 @@ netstat -ano | Select-String ":8000|:5173"
 - [Güvenlik modeli](docs/SECURITY.md)
 - [JSON yedekleme ve geri yükleme](docs/BACKUP.md)
 - [Veritabanı migration sistemi](docs/MIGRATIONS.md)
+- [Docker kurulumu](docs/DOCKER.md)
 - [Aşama denetimi ve yol haritası](docs/ROADMAP.md)
 
 ## Lisans ve kullanım

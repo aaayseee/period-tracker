@@ -69,6 +69,7 @@ Değerlendirme: 3. aşama çalışır durumdadır. UI component testleri ve eri�
 | Çevrimdışı arayüz | MVP tamamlandı | Daha önce yüklenen shell açılabilir |
 | Çevrimdışı veri okuma/yazma | Planlandı | API cache, IndexedDB queue ve sync yok |
 | Lighthouse/installability doğrulaması | Planlandı | Gerçek HTTPS ortamında yapılmalı |
+| Docker ile kurulum | Tamamlandı | Multi-stage frontend, non-root backend, Nginx reverse proxy, healthcheck ve kalıcı named volume |
 
 Değerlendirme: Manifest ve Service Worker doğru temel parçaları sağlar; “tam offline-first ve production-ready PWA” aşaması henüz tamamlanmış sayılmaz.
 

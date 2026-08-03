@@ -1,0 +1,46 @@
+name: luna-period-tracker
+
+services:
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    init: true
+    environment:
+      PERIOD_TRACKER_DB: /app/data/period_tracker.db
+      PERIOD_TRACKER_SESSION_DAYS: "${PERIOD_TRACKER_SESSION_DAYS:-30}"
+      PERIOD_TRACKER_SECURE_COOKIE: "${PERIOD_TRACKER_SECURE_COOKIE:-false}"
+    volumes:
+      - luna-data:/app/data
+    expose:
+      - "8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    init: true
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${LUNA_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+volumes:
+  luna-data:

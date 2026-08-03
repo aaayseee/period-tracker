@@ -18,6 +18,8 @@ flowchart LR
     DB --> B[JSON / dosya yedeği]
 ```
 
+Docker kurulumunda Nginx tek dış giriş noktasıdır. Statik React build'ini sunar ve `/api` ile `/health` isteklerini Compose iç ağındaki FastAPI container'ına yönlendirir. Backend portu host makineye açılmaz; SQLite named volume üzerinde kalır.
+
 Frontend hiçbir sağlık verisini kendi kalıcı deposunun ana kaynağı olarak kullanmaz. Kaynak veri SQLite'tır. Service Worker API yanıtlarını önbelleğe almaz.
 
 ## Backend modülleri
@@ -42,6 +44,7 @@ Frontend hiçbir sağlık verisini kendi kalıcı deposunun ana kaynağı olarak
 | `types.ts` | Backend sözleşmelerinin TypeScript karşılıkları |
 | `styles.css` | Responsive tasarım sistemi |
 | `public/sw.js` | Uygulama kabuğu için ağ-öncelikli cache |
+| `nginx.conf` | Docker ortamında statik dosya sunumu, SPA fallback ve backend reverse proxy |
 
 `App.tsx` bir sonraki büyüme sınırına yaklaşmaktadır. Yeni ekranlar eklendiğinde `features/auth`, `features/calendar`, `features/periods` ve `components` klasörlerine ayrılması önerilir.
 
