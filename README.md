@@ -1,42 +1,253 @@
 # Luna — Kişisel Döngü Takibi
 
-Store gerektirmeden telefona kurulabilen, kişisel kullanıma yönelik bir PWA. Arayüz React/TypeScript, API FastAPI ve veriler SQLite üzerinde çalışır.
+Luna; store zorunluluğu olmadan tarayıcıdan kullanılabilen ve telefona PWA olarak kurulabilen, tek kişilik döngü takip uygulamasıdır. Regl kayıtları, belirtiler, kişisel notlar ve hesap bilgileri kendi SQLite veritabanında tutulur.
 
-## Yerel geliştirme
+> Tahminler yalnızca geçmiş tarihlerden üretilen yaklaşık bilgilerdir. Tıbbi tanı veya doğum kontrol yöntemi değildir.
 
-### Backend
+## Proje durumu
+
+Uygulama yerel kullanım için çalışan bir MVP'dir:
+
+- E-posta/parola ile hesap oluşturma ve giriş
+- PBKDF2 ile tuzlanmış parola hash'i
+- 30 günlük, sunucu tarafında doğrulanan HttpOnly oturum
+- Regl başlangıç/bitiş tarihi, akış, belirti ve not kaydı
+- Kayıt listeleme, güncelleme ve silme API'leri
+- Ortalama döngü ve regl süresi hesabı
+- Sonraki regl, yumurtlama ve doğurganlık dönemi tahmini
+- Takvim, geçmiş kayıtlar ve JSON yedek
+- Responsive React arayüzü
+- Manifest, ikon ve Service Worker içeren PWA kabuğu
+
+Üretim ortamına internet üzerinden açılmadan önce yapılması gerekenler [Yol Haritası](docs/ROADMAP.md) belgesinde açıkça listelenmiştir.
+
+## Kullanılan teknolojiler
+
+| Katman | Teknoloji | Sorumluluk |
+|---|---|---|
+| Frontend | React + TypeScript + Vite | Arayüz, takvim ve API iletişimi |
+| UI ikonları | Lucide React | Uygulama ikonografisi |
+| Backend | Python + FastAPI | REST API, doğrulama ve oturum yönetimi |
+| Veri doğrulama | Pydantic | İstek/yanıt şemaları |
+| Veritabanı | SQLite | Profil, hesap, session ve döngü kayıtları |
+| Test | Pytest + FastAPI TestClient | API, auth ve tahmin algoritması testleri |
+| PWA | Web App Manifest + Service Worker | Kurulabilir uygulama kabuğu |
+
+## Gereksinimler
+
+- Python 3.9 veya üzeri
+- Node.js 20 veya üzeri
+- npm
+- Windows PowerShell veya uyumlu bir terminal
+
+Sürüm kontrolü:
+
+```powershell
+python --version
+node --version
+npm.cmd --version
+```
+
+PowerShell yürütme politikası nedeniyle `npm` komutu engellenirse Windows'ta `npm.cmd` kullan.
+
+## İlk kurulum
+
+Projeyi aç:
+
+```powershell
+cd C:\Users\ayseu\Desktop\period-tracker
+```
+
+### 1. Backend sanal ortamını oluştur
+
+Sanal ortam Python paketlerini bilgisayardaki diğer projelerden ayırır. Bu adım ilk kurulumda bir kez yapılır:
 
 ```powershell
 cd backend
 python -m venv .venv
-.venv\Scripts\Activate.ps1
+```
+
+İki kullanım yöntemi vardır.
+
+#### Önerilen yöntem: aktive etmeden çalıştır
+
+PowerShell izinlerinden etkilenmez:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+```
+
+#### Alternatif yöntem: sanal ortamı aktive et
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-API `http://localhost:8000`, dokümantasyon `http://localhost:8000/docs` adresinde açılır.
-
-### Frontend
+`Activate.ps1` engellenirse yalnızca açık terminal için izin ver:
 
 ```powershell
-cd frontend
-npm install
-npm run dev
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
 ```
 
-Arayüz `http://localhost:5173` adresinde açılır. Geliştirme sunucusu `/api` isteklerini backend'e yönlendirir.
-
-## Testler
+Terminal başında `(.venv)` görünmesi ortamın aktif olduğunu gösterir. Çıkmak için:
 
 ```powershell
-cd backend
-python -m pytest
-
-cd ../frontend
-npm run build
+deactivate
 ```
 
-## Gizlilik notu
+Backend çalıştığında:
 
-SQLite veritabanı varsayılan olarak `backend/data/period_tracker.db` konumunda saklanır. Uygulamayı internete açarken HTTPS ve kimlik doğrulama eklenmeden yayınlanmamalıdır.
+- API: http://127.0.0.1:8000
+- Swagger: http://127.0.0.1:8000/docs
+- Sağlık kontrolü: http://127.0.0.1:8000/health
 
+### 2. Frontend bağımlılıklarını kur
+
+İkinci bir PowerShell terminali aç:
+
+```powershell
+cd C:\Users\ayseu\Desktop\period-tracker\frontend
+npm.cmd install
+npm.cmd run dev
+```
+
+Uygulama http://localhost:5173 adresinde açılır. Vite, `/api` isteklerini otomatik olarak `127.0.0.1:8000` adresine yönlendirir. Uygulamanın çalışması için iki terminal de açık olmalıdır.
+
+## İlk kullanım
+
+1. http://localhost:5173 adresini aç.
+2. Yeni kullanıcıysan **İlk kez kullanıyorum** bölümünü seç.
+3. İsim, e-posta, en az 8 karakterlik parola, son regl tarihi ve ortalamaları gir.
+4. Daha önce hesap oluşturduysan **Hesabım var** bölümünden giriş yap.
+5. **Yeni kayıt** ile sonraki regl ve belirti kayıtlarını ekle.
+
+Oturum varsayılan olarak 30 gün geçerlidir. Süre dolduğunda hesap veya döngü verileri silinmez; yalnızca yeniden giriş gerekir.
+
+## Test ve doğrulama
+
+Backend testleri:
+
+```powershell
+cd C:\Users\ayseu\Desktop\period-tracker\backend
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+Frontend tip kontrolü ve üretim derlemesi:
+
+```powershell
+cd C:\Users\ayseu\Desktop\period-tracker\frontend
+npm.cmd run build
+```
+
+Üretim çıktısını yerelde önizlemek için:
+
+```powershell
+npm.cmd run preview
+```
+
+## Yapılandırma
+
+Backend ayarları ortam değişkenleriyle değiştirilebilir:
+
+| Değişken | Varsayılan | Açıklama |
+|---|---|---|
+| `PERIOD_TRACKER_DB` | `backend/data/period_tracker.db` | SQLite dosyasının yolu |
+| `PERIOD_TRACKER_SESSION_DAYS` | `30` | Session geçerlilik süresi; 1–365 gün |
+| `PERIOD_TRACKER_SECURE_COOKIE` | `false` | HTTPS üretiminde `true` olmalı |
+| `PERIOD_TRACKER_CORS_ORIGINS` | localhost adresleri | Virgülle ayrılmış izinli frontend origin'leri |
+
+PowerShell örneği:
+
+```powershell
+$env:PERIOD_TRACKER_SESSION_DAYS = "60"
+$env:PERIOD_TRACKER_SECURE_COOKIE = "true"
+.\.venv\Scripts\python.exe -m uvicorn app.main:app
+```
+
+## Veriler ve yedekleme
+
+Varsayılan veritabanı:
+
+```text
+backend/data/period_tracker.db
+```
+
+Dashboard'daki **Yedekle** düğmesi profil ve regl kayıtlarını JSON olarak indirir. SQLite dosyasını kopyalamadan önce backend'i durdurmak güvenli bir yedek alınmasını sağlar. Şu anda JSON içe aktarma ekranı yoktur.
+
+## Proje yapısı
+
+```text
+period-tracker/
+├── backend/
+│   ├── app/
+│   │   ├── auth.py        # Parola ve session işlemleri
+│   │   ├── database.py    # SQLite bağlantısı ve şema kurulumu
+│   │   ├── main.py        # FastAPI uygulaması ve endpoint'ler
+│   │   ├── schemas.py     # Pydantic veri sözleşmeleri
+│   │   └── services.py    # Tahmin algoritması ve dönüşümler
+│   ├── tests/             # API, auth ve algoritma testleri
+│   └── requirements.txt
+├── frontend/
+│   ├── public/            # Manifest, Service Worker ve ikon
+│   ├── src/               # React uygulaması, stiller, API ve tipler
+│   └── package.json
+└── docs/
+```
+
+## PWA olarak telefona kurma
+
+Yerel geliştirmede `localhost` güvenli bağlam kabul edilir. Gerçek telefondan kurulum için uygulamanın HTTPS üzerinden erişilebilir olması gerekir.
+
+- Android/Chrome: Menü → **Ana ekrana ekle** veya **Uygulamayı yükle**
+- iPhone/Safari: Paylaş → **Ana Ekrana Ekle**
+
+Mevcut Service Worker uygulama kabuğunu önbelleğe alır; API verilerini çevrimdışı yazıp sonradan senkronize etmez. Ayrıntılar: [PWA ve çevrimdışı davranış](docs/PWA.md).
+
+## Sorun giderme
+
+### “API bağlantısı kurulamadı”
+
+Backend terminalinin açık olduğunu kontrol et:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
+```
+
+Yanıt `{"status":"ok"}` olmalıdır.
+
+### `npm.ps1 cannot be loaded`
+
+```powershell
+npm.cmd install
+npm.cmd run dev
+```
+
+### Port kullanımda
+
+```powershell
+netstat -ano | Select-String ":8000|:5173"
+```
+
+İlgili eski geliştirme sürecini kapat veya uygulamayı farklı portta çalıştır.
+
+### Veritabanını sıfırlama
+
+`backend/data/period_tracker.db` hesap ve döngü verilerini içerir. Silmek geri alınamaz; önce mutlaka yedekle. Normal geliştirme sırasında veritabanını sıfırlamak gerekmez.
+
+## Teknik belgeler
+
+- [Mimari ve ölçeklenebilirlik](docs/ARCHITECTURE.md)
+- [API sözleşmesi](docs/API.md)
+- [PWA ve çevrimdışı davranış](docs/PWA.md)
+- [Güvenlik modeli](docs/SECURITY.md)
+- [Aşama denetimi ve yol haritası](docs/ROADMAP.md)
+
+## Lisans ve kullanım
+
+Bu proje kişisel kullanım için geliştirilmiştir. Sağlıkla ilgili olağandışı veya endişe verici durumlarda bir sağlık profesyoneline başvur.

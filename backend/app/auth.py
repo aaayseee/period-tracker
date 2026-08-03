@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import os
 import secrets
 import sqlite3
 from datetime import datetime, timedelta
@@ -11,7 +12,7 @@ from .database import get_connection
 
 
 SESSION_COOKIE = "luna_session"
-SESSION_DAYS = 30
+SESSION_DAYS = max(1, min(365, int(os.getenv("PERIOD_TRACKER_SESSION_DAYS", "30"))))
 PASSWORD_ITERATIONS = 310_000
 
 

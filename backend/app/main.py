@@ -1,4 +1,5 @@
 import json
+import os
 import sqlite3
 from contextlib import asynccontextmanager
 from datetime import date, timedelta
@@ -47,9 +48,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+cors_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "PERIOD_TRACKER_CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173",
+    ).split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -68,7 +78,8 @@ def set_session_cookie(response: Response, token: str) -> None:
         max_age=SESSION_DAYS * 24 * 60 * 60,
         httponly=True,
         samesite="strict",
-        secure=False,
+        secure=os.getenv("PERIOD_TRACKER_SECURE_COOKIE", "false").lower()
+        in {"1", "true", "yes"},
         path="/",
     )
 
