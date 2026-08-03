@@ -12,6 +12,8 @@ Uygulama yerel kullanım için çalışan bir MVP'dir:
 - PBKDF2 ile tuzlanmış parola hash'i
 - 30 günlük, sunucu tarafında doğrulanan HttpOnly oturum
 - Regl başlangıç/bitiş tarihi, akış, belirti ve not kaydı
+- Tek dokunuşla “Reglim başladı / bitti” akışı
+- Profil ayarlarını ve geçmiş kayıtları düzenleme
 - Kayıt listeleme, güncelleme ve silme API'leri
 - Ortalama döngü ve regl süresi hesabı
 - Sonraki regl, yumurtlama ve doğurganlık dönemi tahmini
@@ -125,7 +127,8 @@ Uygulama http://localhost:5173 adresinde açılır. Vite, `/api` isteklerini oto
 2. Yeni kullanıcıysan **İlk kez kullanıyorum** bölümünü seç.
 3. İsim, e-posta, en az 8 karakterlik parola, son regl tarihi ve ortalamaları gir.
 4. Daha önce hesap oluşturduysan **Hesabım var** bölümünden giriş yap.
-5. **Yeni kayıt** ile sonraki regl ve belirti kayıtlarını ekle.
+5. **Reglim başladı** ile hızlı aktif kayıt aç veya **Yeni kayıt** ile ayrıntıları gir.
+6. Geçmiş kayıtlardaki kalem ikonuyla düzenleme yap; **Ayarlar** bölümünden profil ortalamalarını güncelle.
 
 Oturum varsayılan olarak 30 gün geçerlidir. Süre dolduğunda hesap veya döngü verileri silinmez; yalnızca yeniden giriş gerekir.
 

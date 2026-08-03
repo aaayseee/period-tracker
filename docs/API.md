@@ -96,7 +96,15 @@ Korumalıdır. Kişisel başlangıç ayarlarını döndürür:
 
 ### `PUT /api/profile`
 
-Korumalıdır. Profil varsayımlarını ve verilen son regl başlangıcını günceller. İstek kayıt payload'ıyla aynı profil alanlarını kullanır; parola/e-posta istemez.
+Korumalıdır. İsim ve tahminlerde kullanılan profil varsayımlarını günceller. Yeni regl kaydı oluşturmaz.
+
+```json
+{
+  "name": "Ayşe",
+  "average_cycle_length": 30,
+  "average_period_length": 5
+}
+```
 
 ## Regl kayıtları
 
@@ -131,6 +139,8 @@ Başarılı yanıt `201 Created` ve oluşturulan kayıttır.
 ### `PUT /api/periods/{period_id}`
 
 Mevcut kaydı tam payload ile günceller. Kayıt yoksa `404` döner.
+
+“Reglim bitti” hızlı işlemi aktif kaydın mevcut alanlarını korur ve `end_date` değerini bugüne ayarlamak için bu endpoint'i kullanır.
 
 ### `DELETE /api/periods/{period_id}`
 

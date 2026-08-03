@@ -44,12 +44,13 @@ Değerlendirme: Temel istatistiksel algoritma ve API entegrasyonu sağlamdır. K
 |---|---|---|
 | Sade, reklamsız arayüz | Tamamlandı | Mobil öncelikli responsive dashboard |
 | Büyük takvim | Tamamlandı | Gerçek, tahmini ve doğurgan gün işaretleri |
-| “Döngü başladı” işlemi | MVP tamamlandı | Aynı işlev **Yeni kayıt** formuyla başlangıç/bitiş seçilerek sağlanıyor |
+| “Döngü başladı/bitti” işlemi | Tamamlandı | Dashboard'da aktif kaydı açan ve bugünün tarihiyle kapatan hızlı buton |
 | React API bağlantısı | Tamamlandı | Merkezi `api.ts`, Vite proxy ve tipli modeller |
 | Telefonda veri yazma | Tamamlandı | Form → korumalı POST → SQLite → dashboard yenileme |
 | İlk kullanım onboarding | Tamamlandı | İsim, hesap, son tarih ve ortalama değerler |
 | Daha önceki hesaba giriş | Tamamlandı | E-posta/parola, kalıcı session ve çıkış |
 | Yedek alma | Tamamlandı | Profil ve kayıtların JSON export'u |
+| Profil/kayıt düzenleme | Tamamlandı | Ayarlar modalı ve geçmiş kayıt düzenleme formu |
 
 Değerlendirme: 3. aşama çalışır durumdadır. UI component testleri ve erişilebilirlik denetimi gelecekte eklenmelidir.
 
