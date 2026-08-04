@@ -27,6 +27,7 @@ import { api } from "./api";
 import type {
   AccountLoginPayload,
   AccountRegisterPayload,
+  AdminAuditLog,
   AdminInvite,
   AdminUser,
   AuthSession,
@@ -739,6 +740,7 @@ function SettingsModal({
 function AdminDashboard({ session, onLogout }: { session: AuthSession; onLogout: () => Promise<void> }) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [invites, setInvites] = useState<AdminInvite[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
   const [expiryDays, setExpiryDays] = useState(7);
   const [maxUses, setMaxUses] = useState(1);
   const [createdCode, setCreatedCode] = useState("");
@@ -750,12 +752,14 @@ function AdminDashboard({ session, onLogout }: { session: AuthSession; onLogout:
   const [adminError, setAdminError] = useState("");
 
   const loadAdminData = useCallback(async () => {
-    const [userData, inviteData] = await Promise.all([
+    const [userData, inviteData, auditData] = await Promise.all([
       api.getAdminUsers(),
-      api.getAdminInvites()
+      api.getAdminInvites(),
+      api.getAdminAuditLogs()
     ]);
     setUsers(userData);
     setInvites(inviteData);
+    setAuditLogs(auditData);
   }, []);
 
   useEffect(() => {
@@ -913,6 +917,32 @@ function AdminDashboard({ session, onLogout }: { session: AuthSession; onLogout:
           })}
           {!invites.length && <p className="settings-hint">Henüz davet oluşturulmadı.</p>}
         </div>
+      </section>
+
+      <section className="panel admin-card admin-wide">
+        <div className="section-heading"><div><span className="eyebrow">GÜVENLİK KAYDI</span><h2>Son yönetim hareketleri</h2></div></div>
+        <div className="admin-list">
+          {auditLogs.map((log) => {
+            const labels: Record<string, string> = {
+              admin_login: "Admin girişi",
+              admin_logout: "Admin çıkışı",
+              admin_password_changed: "Admin parolası değiştirildi",
+              admin_password_recovered: "Admin parolası kurtarma koduyla yenilendi",
+              admin_recovery_code_rotated: "Admin kurtarma kodu yenilendi",
+              invite_created: "Davet oluşturuldu",
+              invite_revoked: "Davet iptal edildi",
+              user_status_changed: log.details.is_active ? "Kullanıcı etkinleştirildi" : "Kullanıcı devre dışı bırakıldı"
+            };
+            const target = log.target_id !== null ? ` · #${log.target_id}` : "";
+            return (
+              <article key={log.id} className="admin-row audit-row">
+                <div><strong>{labels[log.action] ?? log.action}{target}</strong><small>{log.admin_email} · {new Date(log.created_at).toLocaleString("tr-TR")}</small></div>
+              </article>
+            );
+          })}
+          {!auditLogs.length && <p className="settings-hint">Henüz yönetim hareketi kaydedilmedi.</p>}
+        </div>
+        <p className="settings-hint audit-privacy">Bu kayıtlar yalnızca yönetim metadatasıdır; parola, davet kodu veya sağlık verisi içermez.</p>
       </section>
     </section>
   );

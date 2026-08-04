@@ -106,6 +106,16 @@ export interface AdminInviteCreatePayload {
   max_uses: number;
 }
 
+export interface AdminAuditLog {
+  id: number;
+  admin_email: string;
+  action: string;
+  target_type: string | null;
+  target_id: number | null;
+  details: Record<string, unknown>;
+  created_at: string;
+}
+
 export interface BackupData {
   schema_version?: 1;
   exported_at: string;

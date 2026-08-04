@@ -20,6 +20,7 @@
 | Hesap/session | Tamamlandı | Kayıt, giriş, çıkış, session kontrolü ve korumalı veri uçları |
 | Çok kullanıcı ve veri izolasyonu | Tamamlandı | Davetli kayıt, `account_id` filtreleri, ayrı admin rolü ve iki kullanıcı izolasyon testleri |
 | Admin paneli | Tamamlandı | Davet üretme/iptal, kullanıcı metadata listesi ve aktif/pasif yönetimi; sağlık verisi gösterilmez |
+| Admin audit logları | Tamamlandı | Allow-list detaylar, atomik kayıt, yalnız admin API/panel erişimi ve hassas veri sızıntı testleri |
 | Parola değiştirme/kurtarma | Tamamlandı | Parola değişimi, hash'li kurtarma kodu, kod rotasyonu ve eski session iptali |
 | Veritabanı migration sistemi | Tamamlandı | Sıralı Python migration'ları, `schema_migrations`, otomatik başlangıç yükseltmesi ve rollback testleri |
 
@@ -114,7 +115,7 @@ Bu nedenle doğru ifade:
 1. PostgreSQL
 2. SQLAlchemy/Alembic
 3. Rate limit ve e-posta doğrulama
-4. Admin audit logları
+4. Audit log saklama süresi ve dış alarm/izleme entegrasyonu
 5. Birden fazla backend instance ve merkezi session store
 
 ## “Bitti” kabul kriteri

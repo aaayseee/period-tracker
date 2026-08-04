@@ -60,6 +60,8 @@ Profil, regl kayıtları, tahmin, export ve restore endpoint'leri geçerli sessi
 
 Kişisel veri endpoint'leri ayrıca `user` rolü ister ve her SQL sorgusunu oturumdaki `account_id` ile filtreler. Admin hesabı bu endpoint'lerde `403 Forbidden` alır. Admin endpoint'leri yalnızca hesap/davet metadatası seçer; sağlık tablolarını okumaz.
 
+Admin hareketleri `admin_audit_logs` tablosuna yazılır. Audit servisi action başına izinli detay anahtarlarını allow-list ile sınırlar. Parola, kurtarma kodu, ham davet kodu, regl tarihi, semptom veya not kabul edilmez. Kayıtlar yönetim işlemiyle aynı transaction içinde yazılır; işlem geri alınırsa audit kaydı da geri alınır.
+
 Kayıt davet koduyla sınırlandırılır. Ham davet kodu saklanmaz; SHA-256 özeti, son tarih, kullanım limiti ve iptal durumu tutulur. Hesap oluşturma ile davetin tüketimi aynı transaction içindedir.
 
 Public endpoint'ler:
@@ -109,7 +111,7 @@ Limit olayları SQLite'ta tutulduğu için backend yeniden başladığında kayb
 - CORS origin listesini gerçek domain ile sınırla — `LUNA_DOMAIN` üzerinden ayarlanıyor
 - Reverse proxy üzerinde HSTS, CSP, X-Content-Type-Options ve Referrer-Policy ekle — Caddyfile içinde yapılandırıldı
 - Dağıtık saldırılar için reverse proxy/merkezi rate limiting ekle
-- Admin işlemleri için audit log ekle
+- Audit loglar için saklama süresi ve dış izleme/uyarı politikası belirle
 - Parola sıfırlama ve e-posta doğrulama tasarla
 - SQLite/veritabanı dosyasını şifreli diskte tut
 - Düzenli şifreli yedek al ve geri yüklemeyi test et

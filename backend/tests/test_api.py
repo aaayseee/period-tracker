@@ -2,6 +2,7 @@ import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -465,6 +466,7 @@ def test_admin_can_manage_invites_and_status_but_not_health_data(tmp_path):
         assert admin_client.get("/api/auth/session").json()["role"] == "admin"
         assert admin_client.get("/api/profile").status_code == 403
         assert admin_client.get("/api/periods").status_code == 403
+        assert user_client.get("/api/admin/audit-logs").status_code == 403
 
         created_invite = admin_client.post(
             "/api/admin/invites", json={"expiry_days": 14, "max_uses": 2}
@@ -496,6 +498,31 @@ def test_admin_can_manage_invites_and_status_but_not_health_data(tmp_path):
         assert admin_client.post(
             f"/api/admin/invites/{created_invite.json()['id']}/revoke"
         ).json()["revoked_at"] is not None
+
+        rotated = admin_client.post("/api/auth/recovery-code")
+        assert rotated.status_code == 200
+        audit_logs = admin_client.get("/api/admin/audit-logs")
+        assert audit_logs.status_code == 200
+        actions = {item["action"] for item in audit_logs.json()}
+        assert {
+            "admin_login",
+            "invite_created",
+            "invite_revoked",
+            "user_status_changed",
+            "admin_recovery_code_rotated",
+        }.issubset(actions)
+        assert all(
+            set(item) == {
+                "id", "admin_email", "action", "target_type", "target_id",
+                "details", "created_at",
+            }
+            for item in audit_logs.json()
+        )
+        serialized_logs = str(audit_logs.json()).lower()
+        assert created_invite.json()["invite_code"].lower() not in serialized_logs
+        assert rotated.json()["recovery_code"].lower() not in serialized_logs
+        assert "symptoms" not in serialized_logs
+        assert "notes" not in serialized_logs
 
 
 def test_login_and_recovery_are_rate_limited(tmp_path):
@@ -538,3 +565,28 @@ def test_login_and_recovery_are_rate_limited(tmp_path):
         )
         assert blocked_recovery.status_code == 429
         assert int(blocked_recovery.headers["retry-after"]) > 0
+
+
+def test_admin_audit_rejects_non_allow_listed_sensitive_fields(tmp_path):
+    from app.admin_cli import create_admin_account
+    from app.audit import record_admin_audit
+    from app.database import connect, init_database
+
+    database_path = tmp_path / "audit.db"
+    init_database(database_path)
+    with connect(database_path) as connection:
+        create_admin_account(connection, "audit@example.com", "admin-parola-123")
+        admin = connection.execute(
+            "SELECT * FROM accounts WHERE role = 'admin'"
+        ).fetchone()
+        for forbidden_field in ("password", "invite_code", "symptoms", "notes"):
+            with pytest.raises(ValueError, match="allow-listed"):
+                record_admin_audit(
+                    connection,
+                    admin,
+                    "admin_login",
+                    details={forbidden_field: "secret"},
+                )
+        assert connection.execute(
+            "SELECT COUNT(id) FROM admin_audit_logs"
+        ).fetchone()[0] == 0

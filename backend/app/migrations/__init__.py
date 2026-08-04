@@ -8,6 +8,7 @@ from .versions import (
     v0002_recovery_code,
     v0003_multi_user,
     v0004_auth_rate_limits,
+    v0005_admin_audit_logs,
 )
 
 
@@ -45,6 +46,11 @@ MIGRATIONS: tuple[Migration, ...] = (
         v0004_auth_rate_limits.VERSION,
         v0004_auth_rate_limits.NAME,
         v0004_auth_rate_limits.upgrade,
+    ),
+    Migration(
+        v0005_admin_audit_logs.VERSION,
+        v0005_admin_audit_logs.NAME,
+        v0005_admin_audit_logs.upgrade,
     ),
 )
 

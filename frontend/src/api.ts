@@ -1,6 +1,7 @@
 import type {
   AccountLoginPayload,
   AccountRegisterPayload,
+  AdminAuditLog,
   AdminInvite,
   AdminInviteCreated,
   AdminInviteCreatePayload,
@@ -99,6 +100,8 @@ export const api = {
     }),
   revokeAdminInvite: (id: number) =>
     request<AdminInvite>(`/api/admin/invites/${id}/revoke`, { method: "POST" }),
+  getAdminAuditLogs: (limit = 50) =>
+    request<AdminAuditLog[]>(`/api/admin/audit-logs?limit=${limit}`),
   getProfile: () => request<Profile | null>("/api/profile"),
   updateProfile: (payload: ProfileUpdatePayload) =>
     request<Profile>("/api/profile", {

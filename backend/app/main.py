@@ -5,10 +5,11 @@ from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from typing import List, Optional
 
-from fastapi import Cookie, Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi import Cookie, Depends, FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import get_connection, init_database
+from .audit import record_admin_audit
 from .auth import (
     SESSION_COOKIE,
     SESSION_DAYS,
@@ -33,6 +34,7 @@ from .schemas import (
     AdminInvite,
     AdminInviteCreate,
     AdminInviteCreated,
+    AdminAuditLog,
     AdminUser,
     AdminUserStatusUpdate,
     AuthSession,
@@ -225,7 +227,10 @@ def login(
         )
 
     clear_rate_limit(connection, rate_limit_bucket)
-    token = create_session(connection, account["id"])
+    token = create_session(connection, account["id"], commit=False)
+    if account["role"] == "admin":
+        record_admin_audit(connection, account, "admin_login")
+    connection.commit()
     set_session_cookie(response, token)
     return AuthSession(email=account["email"], role=account["role"])
 
@@ -281,6 +286,8 @@ def change_password(
     connection.execute(
         "DELETE FROM sessions WHERE account_id = ?", (account["id"],)
     )
+    if account["role"] == "admin":
+        record_admin_audit(connection, account, "admin_password_changed")
     connection.commit()
     token = create_session(connection, account["id"])
     set_session_cookie(response, token)
@@ -304,6 +311,8 @@ def rotate_recovery_code(
         """,
         (hash_recovery_code(recovery_code), account["id"]),
     )
+    if account["role"] == "admin":
+        record_admin_audit(connection, account, "admin_recovery_code_rotated")
     connection.commit()
     return RecoveryCodeResult(recovery_code=recovery_code)
 
@@ -353,6 +362,8 @@ def recover_password(
     connection.execute(
         "DELETE FROM sessions WHERE account_id = ?", (account["id"],)
     )
+    if account["role"] == "admin":
+        record_admin_audit(connection, account, "admin_password_recovered")
     connection.commit()
     token = create_session(connection, account["id"])
     set_session_cookie(response, token)
@@ -370,10 +381,21 @@ def logout(
     connection: sqlite3.Connection = Depends(get_connection),
 ) -> Response:
     if luna_session:
+        actor = connection.execute(
+            """
+            SELECT accounts.*
+            FROM sessions
+            JOIN accounts ON accounts.id = sessions.account_id
+            WHERE sessions.token_hash = ?
+            """,
+            (hash_session_token(luna_session),),
+        ).fetchone()
         connection.execute(
             "DELETE FROM sessions WHERE token_hash = ?",
             (hash_session_token(luna_session),),
         )
+        if actor is not None and actor["role"] == "admin":
+            record_admin_audit(connection, actor, "admin_logout")
         connection.commit()
     response.delete_cookie(SESSION_COOKIE, path="/")
     response.status_code = status.HTTP_204_NO_CONTENT
@@ -399,7 +421,7 @@ def admin_list_users(
 def admin_update_user_status(
     account_id: int,
     payload: AdminUserStatusUpdate,
-    _: sqlite3.Row = Depends(require_admin_account),
+    admin: sqlite3.Row = Depends(require_admin_account),
     connection: sqlite3.Connection = Depends(get_connection),
 ) -> AdminUser:
     target = connection.execute(
@@ -418,6 +440,14 @@ def admin_update_user_status(
     )
     if not payload.is_active:
         connection.execute("DELETE FROM sessions WHERE account_id = ?", (account_id,))
+    record_admin_audit(
+        connection,
+        admin,
+        "user_status_changed",
+        target_type="user",
+        target_id=account_id,
+        details={"is_active": payload.is_active},
+    )
     connection.commit()
     row = connection.execute(
         """
@@ -454,6 +484,17 @@ def admin_create_invite(
             payload.max_uses,
         ),
     )
+    record_admin_audit(
+        connection,
+        admin,
+        "invite_created",
+        target_type="invite",
+        target_id=cursor.lastrowid,
+        details={
+            "expires_at": expires_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "max_uses": payload.max_uses,
+        },
+    )
     connection.commit()
     row = connection.execute(
         "SELECT * FROM invite_codes WHERE id = ?", (cursor.lastrowid,)
@@ -479,7 +520,7 @@ def admin_list_invites(
 @app.post("/api/admin/invites/{invite_id}/revoke", response_model=AdminInvite)
 def admin_revoke_invite(
     invite_id: int,
-    _: sqlite3.Row = Depends(require_admin_account),
+    admin: sqlite3.Row = Depends(require_admin_account),
     connection: sqlite3.Connection = Depends(get_connection),
 ) -> AdminInvite:
     cursor = connection.execute(
@@ -492,7 +533,6 @@ def admin_revoke_invite(
     )
     if cursor.rowcount == 0:
         raise HTTPException(status_code=404, detail="Davet bulunamadı.")
-    connection.commit()
     row = connection.execute(
         """
         SELECT id, expires_at, max_uses, use_count, revoked_at, created_at
@@ -500,7 +540,37 @@ def admin_revoke_invite(
         """,
         (invite_id,),
     ).fetchone()
+    record_admin_audit(
+        connection,
+        admin,
+        "invite_revoked",
+        target_type="invite",
+        target_id=invite_id,
+        details={"max_uses": row["max_uses"], "use_count": row["use_count"]},
+    )
+    connection.commit()
     return AdminInvite(**dict(row))
+
+
+@app.get("/api/admin/audit-logs", response_model=List[AdminAuditLog])
+def admin_list_audit_logs(
+    limit: int = Query(default=50, ge=1, le=200),
+    _: sqlite3.Row = Depends(require_admin_account),
+    connection: sqlite3.Connection = Depends(get_connection),
+) -> List[AdminAuditLog]:
+    rows = connection.execute(
+        """
+        SELECT id, admin_email, action, target_type, target_id, details, created_at
+        FROM admin_audit_logs
+        ORDER BY created_at DESC, id DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+    return [
+        AdminAuditLog(**{**dict(row), "details": json.loads(row["details"])})
+        for row in rows
+    ]
 
 
 @app.get(

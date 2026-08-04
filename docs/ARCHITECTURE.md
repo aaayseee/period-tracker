@@ -23,6 +23,7 @@ Nginx statik frontend'i sunar ve API isteklerini backend container'ına yönlend
 | `main.py` | FastAPI endpoint'leri, kayıt transaction'ı, kullanıcı/admin işlemleri |
 | `auth.py` | PBKDF2 parola, recovery/davet hash'leri, session ve rol dependency'leri |
 | `rate_limit.py` | Hash'lenmiş IP+hesap kovalarıyla kalıcı auth deneme sınırları |
+| `audit.py` | Allow-list kontrollü, sağlık verisi içermeyen admin hareket kayıtları |
 | `database.py` | SQLite bağlantısı, foreign key ayarı ve migration başlangıcı |
 | `migrations/` | Sıralı, transaction'lı ve geri alınabilir şema yükseltmeleri |
 | `schemas.py` | Pydantic istek/yanıt sözleşmeleri |
@@ -65,13 +66,17 @@ Ham cookie değil SHA-256 token özeti, hesap ilişkisi ve sona erme zamanını 
 
 Ham kod yerine SHA-256 hash, oluşturan admin, son tarih, kullanım limiti/sayısı ve iptal zamanını tutar.
 
+### `admin_audit_logs`
+
+Admin kimliği/e-posta snapshot'ı, action, hedef ve sınırlı JSON metadata tutar. Yönetim işlemiyle aynı transaction'a katılır. Sağlık tablolarından veri içermez.
+
 ## Yetkilendirme ve izolasyon
 
 1. Cookie token'ı hash'lenir ve aktif hesapla birlikte session tablosundan bulunur.
 2. Endpoint rol dependency'si `user` veya `admin` gereksinimini uygular.
 3. Tüm profil, dönem, tahmin, export ve restore SQL sorguları `account_id` ile filtrelenir.
 4. Başka hesaba ait dönem id'si güncelleme/silmede bulunmuş kabul edilmez ve `404` döner.
-5. Admin sorguları yalnızca hesap ve davet metadata kolonlarını seçer; sağlık tablolarına join yapmaz.
+5. Admin sorguları yalnızca hesap, davet ve audit metadata kolonlarını seçer; sağlık tablolarına join yapmaz.
 
 Kayıt sırasında davet doğrulama, hesap/profil/ilk dönem oluşturma, davet kullanım sayısını artırma ve session yazma tek `BEGIN IMMEDIATE` transaction içinde gerçekleşir.
 

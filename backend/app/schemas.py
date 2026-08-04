@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -118,6 +118,16 @@ class AdminUser(BaseModel):
 
 class AdminUserStatusUpdate(BaseModel):
     is_active: bool
+
+
+class AdminAuditLog(BaseModel):
+    id: int
+    admin_email: str
+    action: str
+    target_type: Optional[str]
+    target_id: Optional[int]
+    details: Dict[str, object]
+    created_at: datetime
 
 
 class Profile(BaseModel):

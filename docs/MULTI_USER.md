@@ -12,8 +12,11 @@ Admin hesabı yalnızca operasyon içindir:
 - kullanıcı e-postası, rolü, oluşturulma tarihi ve aktiflik durumunu görür;
 - kişisel kullanıcıyı geçici olarak devre dışı bırakır veya yeniden etkinleştirir;
 - kendi parolasını ve kurtarma kodunu yönetir.
+- sağlık verisi içermeyen son yönetim hareketlerini audit panelinde görür.
 
 Admin API'si profil, regl, semptom, not, PMS, ovülasyon, tahmin veya JSON yedek içeriği döndürmez. Admin hesabıyla kişisel takip endpoint'lerine erişim `403 Forbidden` ile reddedilir.
+
+Audit paneli admin giriş/çıkışı, davet, kullanıcı durumu ve admin güvenlik işlemlerini gösterir. Ham kodlar ve sağlık verileri audit tablosuna yazılmaz.
 
 ### Kişisel kullanıcı hesabı
 

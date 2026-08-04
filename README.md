@@ -10,6 +10,7 @@ Uygulama yerel kullanım için çalışan bir MVP'dir:
 
 - Davet koduyla e-posta/parola hesabı oluşturma ve mevcut hesaba giriş
 - Ayrı yönetici hesabı, davet üretme/iptal etme ve kullanıcı etkinleştirme/pasifleştirme paneli
+- Sağlık verisi içermeyen, allow-list kontrollü admin audit kayıtları
 - Profil, regl, PMS, ovülasyon, yedek ve tahmin verilerinde hesap bazlı veri izolasyonu
 - Parola değiştirme ve tek kullanımlık gösterilen kurtarma kodu
 - PBKDF2 ile tuzlanmış parola hash'i
@@ -272,6 +273,7 @@ period-tracker/
 ├── backend/
 │   ├── app/
 │   │   ├── auth.py        # Parola ve session işlemleri
+│   │   ├── audit.py       # Güvenli admin hareket kayıtları
 │   │   ├── rate_limit.py  # Kalıcı auth deneme sınırları
 │   │   ├── database.py    # SQLite bağlantısı ve şema kurulumu
 │   │   ├── main.py        # FastAPI uygulaması ve endpoint'ler

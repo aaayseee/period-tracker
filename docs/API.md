@@ -117,6 +117,12 @@ Davet id, son tarih, kullanım limiti/sayısı, iptal ve oluşturulma zamanını
 
 Davet kodunu kalıcı olarak geçersiz kılar.
 
+### `GET /api/admin/audit-logs?limit=50`
+
+Son admin hareketlerini en yeniden eskiye döndürür. `limit` 1–200 arasındadır. Her kayıtta admin e-posta snapshot'ı, action, hedef türü/id, allow-list kontrollü detaylar ve zaman bulunur.
+
+Kaydedilen olaylar admin giriş/çıkışı, parola veya kurtarma işlemi, davet oluşturma/iptal ve kullanıcı aktiflik değişikliğidir. Parola, kurtarma kodu, ham davet kodu veya sağlık verisi dönmez. Normal kullanıcı `403 Forbidden` alır.
+
 ### `POST /api/auth/logout`
 
 Mevcut session'ı veritabanından siler, cookie'yi temizler ve `204 No Content` döner.
