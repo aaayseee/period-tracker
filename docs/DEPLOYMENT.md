@@ -36,6 +36,8 @@ Gerçek yayına geçmeden önce şunlar gerekir:
 4. DNS yönetim paneline erişim
 5. Sunucuda Docker Engine ve Docker Compose
 
+İnternete açık sunucuda Docker'ı dağıtımın resmi `apt` repository'sinden kur. Docker'ın yayınlanan container portlarının bazı firewall kurallarını atlayabildiğini unutma; yalnız Compose dosyasında bilinçli olarak publish edilen 80/443 ve localhost tanılama portu kullanılmalıdır.
+
 Ev internetindeki bilgisayara yayın yapılacaksa CGNAT, değişken IP ve router port yönlendirmesi sorunları olabilir. Kişisel sağlık verisi için güncel ve yalnız bu işe ayrılmış küçük bir VPS daha öngörülebilir seçenektir.
 
 ## DNS hazırlığı
@@ -98,11 +100,15 @@ PERIOD_TRACKER_SESSION_DAYS=30
 
 `.env.production` Git tarafından yok sayılır. Gerçek domain/e-posta değerlerini repository'ye commit etme.
 
+Şifreli tam yedek anahtarı ayrı `.env.backup` dosyasında tutulur. Yeni ve boş bir production kurulumuysa [şifreli yedek rehberindeki](ENCRYPTED_BACKUPS.md) `init-env` komutuyla sunucuda üret. Mevcut yerel hesapları taşıyacaksan aşağıdaki veri taşıma bölümünü izle ve mevcut anahtarı güvenli SSH kanalıyla aktar. İki dosya da Git dışında kalmalıdır.
+
 ## Production başlatma
 
 ```bash
 docker compose \
   --env-file .env.production \
+  --env-file .env.backup \
+  --profile backups \
   -f compose.yaml \
   -f compose.production.yaml \
   up --build -d
@@ -116,22 +122,77 @@ Bu komut:
 4. Backend ve frontend healthcheck'lerini bekler.
 5. Caddy'yi 80/443 üzerinde başlatır.
 6. Domain doğru yönleniyorsa public TLS sertifikasını otomatik alır.
+7. İlk şifreli tam yedeği hemen alır, ardından günlük zamanlamaya geçer.
 
 Durum ve loglar:
 
 ```bash
 docker compose \
   --env-file .env.production \
+  --env-file .env.backup \
+  --profile backups \
   -f compose.yaml \
   -f compose.production.yaml \
   ps
 
 docker compose \
   --env-file .env.production \
+  --env-file .env.backup \
+  --profile backups \
   -f compose.yaml \
   -f compose.production.yaml \
   logs -f caddy
 ```
+
+`backend`, `frontend` ve `backup` servislerinin `healthy`, `caddy` servisinin `Up` olması beklenir.
+
+## Mevcut yerel hesapları production'a taşıma
+
+Bu akış admin hesabını, kişisel hesabını, arkadaş hesaplarını, davetleri, regl kayıtlarını ve ayarları birlikte taşır. Production backend'i ilk kez başlatmadan önce uygulanması en temiz yöntemdir.
+
+### Yerel bilgisayarda
+
+Güncel bir şifreli yedek al ve host klasörüne çıkar:
+
+```powershell
+docker compose --env-file .env.backup --profile backups exec backup python -m app.backup_cli create
+New-Item -ItemType Directory -Force backups
+docker compose --env-file .env.backup --profile backups cp backup:/app/backups/. ./backups/
+```
+
+Listeden en yeni `.luna-backup` dosyasını seç. Repository kodunu normal Git akışıyla; seçilen şifreli dosyayı ve `.env.backup` dosyasını ise SSH/SCP ile sunucuya aktar. Anahtar içeriğini mesajlaşma uygulamasına yapıştırma.
+
+### Production sunucusunda
+
+Repository kökünde `.env.production`, `.env.backup` ve `backups/SECILEN_YEDEK.luna-backup` hazırken önce recovery image'ını oluştur:
+
+```bash
+docker compose \
+  --env-file .env.production \
+  --env-file .env.backup \
+  --profile recovery \
+  -f compose.yaml \
+  -f compose.production.yaml \
+  build recovery
+```
+
+Yedeği salt-okunur host klasöründen yeni `luna-data` volume'üne doğrulayarak geri yükle:
+
+```bash
+docker compose \
+  --env-file .env.production \
+  --env-file .env.backup \
+  --profile recovery \
+  -f compose.yaml \
+  -f compose.production.yaml \
+  run --rm --no-deps \
+  -v "$PWD/backups:/import:ro" \
+  recovery python -m app.backup_cli restore \
+  /import/SECILEN_YEDEK.luna-backup \
+  --output /app/data/period_tracker.db
+```
+
+Komut var olan bir veritabanını sessizce ezmez. Hedef daha önce oluşturulduysa dur ve mevcut verinin ne olduğunu doğrula; doğrudan `--replace` ekleme. Başarılı restore sonrasında normal production başlatma komutunu çalıştır.
 
 ## Doğrulama
 
@@ -169,6 +230,7 @@ Beklenenler:
 
 ```text
 luna-period-tracker_luna-data     # SQLite sağlık verisi
+luna-period-tracker_luna-backups  # AES-256-GCM korumalı tam yedekler
 luna-period-tracker_caddy-data    # TLS private key ve sertifikalar
 luna-period-tracker_caddy-config  # Caddy çalışma yapılandırması
 ```
@@ -189,6 +251,8 @@ Bu komut SQLite ve Caddy volume'lerini silebilir.
 git pull --ff-only
 docker compose \
   --env-file .env.production \
+  --env-file .env.backup \
+  --profile backups \
   -f compose.yaml \
   -f compose.production.yaml \
   up --build -d

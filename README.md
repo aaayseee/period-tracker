@@ -102,7 +102,7 @@ Gerçek domain üzerinden HTTPS yayını için `.env.production.example` dosyas�
 
 ```powershell
 Copy-Item .env.production.example .env.production
-docker compose --env-file .env.production -f compose.yaml -f compose.production.yaml up --build -d
+docker compose --env-file .env.production --env-file .env.backup --profile backups -f compose.yaml -f compose.production.yaml up --build -d
 ```
 
 Domain DNS kayıtları ile sunucu/VPS hazırlığı dahil tam süreç: [HTTPS deployment](docs/DEPLOYMENT.md).
