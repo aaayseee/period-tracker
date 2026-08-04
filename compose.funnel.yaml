@@ -1,0 +1,4 @@
+services:
+  backend:
+    environment:
+      PERIOD_TRACKER_SECURE_COOKIE: "true"
