@@ -24,6 +24,7 @@ Uygulama yerel kullanım için çalışan bir MVP'dir:
 - Sonraki regl, yumurtlama ve doğurganlık dönemi tahmini
 - Takvimde ayrı ovülasyon günü ve 7 günlük PMS penceresi
 - Takvim, geçmiş kayıtlar, JSON yedek alma ve geri yükleme
+- Tüm SQLite veritabanı için günlük AES-256-GCM şifreli yedek ve kontrollü geri yükleme
 - Sürümlü, transaction destekli SQLite migration sistemi
 - Docker Compose ile tek komutluk, kalıcı verili kurulum
 - Caddy ile otomatik sertifika yenilemeli HTTPS deployment altyapısı
@@ -42,6 +43,7 @@ Uygulama yerel kullanım için çalışan bir MVP'dir:
 | Veri doğrulama | Pydantic | İstek/yanıt şemaları |
 | Veritabanı | SQLite | Profil, hesap, session ve döngü kayıtları |
 | Migration | Yerel Python migration runner | Sıralı şema yükseltme, geçmiş ve rollback |
+| Yedek şifreleme | cryptography + AES-256-GCM | Tam SQLite snapshot gizliliği ve bütünlüğü |
 | Container | Docker Compose + Nginx | Production build, reverse proxy ve kalıcı SQLite volume |
 | HTTPS edge | Caddy 2 | TLS sertifikası, HTTP yönlendirmesi ve güvenlik header'ları |
 | Test | Pytest + FastAPI TestClient | API, auth ve tahmin algoritması testleri |
@@ -240,6 +242,9 @@ Backend ayarları ortam değişkenleriyle değiştirilebilir:
 | `PERIOD_TRACKER_RECOVERY_WINDOW_SECONDS` | `1800` | Kurtarma rate limit penceresi |
 | `PERIOD_TRACKER_REGISTER_ATTEMPTS` | `10` | Kayıt penceresinde izin verilen başarısız deneme |
 | `PERIOD_TRACKER_REGISTER_WINDOW_SECONDS` | `3600` | Kayıt rate limit penceresi |
+| `PERIOD_TRACKER_BACKUP_INTERVAL_HOURS` | `24` | Şifreli tam yedekler arasındaki süre |
+| `PERIOD_TRACKER_BACKUP_RETENTION_DAYS` | `30` | Şifreli yedek saklama süresi |
+| `PERIOD_TRACKER_BACKUP_MIN_FILES` | `3` | Her durumda korunacak en yeni yedek sayısı |
 
 PowerShell örneği:
 
@@ -262,7 +267,9 @@ Dashboard'daki **Yedekle** düğmesi profil ve regl kayıtlarını sürüm bilgi
 - **Tamamen değiştir:** Mevcut profil ve regl kayıtlarını yedekteki haliyle değiştirir.
 - **Kayıtları birleştir:** Mevcut profil ve kayıtları korur, yalnızca eksik başlangıç tarihlerini ekler.
 
-Geri yükleme hesap e-postasını, parolayı, kurtarma kodunu ve oturumları değiştirmez. SQLite dosyasını doğrudan kopyalamadan önce backend'i durdurmak güvenli bir yedek alınmasını sağlar. Ayrıntılar: [JSON yedekleme ve geri yükleme](docs/BACKUP.md).
+JSON geri yükleme hesap e-postasını, parolayı, kurtarma kodunu ve oturumları değiştirmez. Ayrıntılar: [Kullanıcı JSON yedekleme ve geri yükleme](docs/BACKUP.md).
+
+Sunucunun tamamı için isteğe bağlı `backup` Docker profili, SQLite online backup API'siyle günlük snapshot alır; AES-256-GCM ile şifreler, bütünlüğünü doğrular ve ayrı `luna-backups` volume'ünde saklar. Anahtar Git-ignored `.env.backup` dosyasındadır. Kurulum, off-site kopya ve kontrollü restore adımları: [Otomatik şifreli veritabanı yedekleri](docs/ENCRYPTED_BACKUPS.md).
 
 Admin paneli sağlık verilerini göstermez. Veritabanının tamamına sunucu yöneticisi olarak erişmen gerekirse yerel kurulumda `backend/data/period_tracker.db`, Docker kurulumunda ise `luna-data` named volume kullanılır. Ham SQLite erişimi tüm kullanıcıların hassas verilerine erişim sağladığından yalnızca bakım/yedekleme amacıyla kullanılmalıdır.
 
@@ -274,6 +281,7 @@ period-tracker/
 │   ├── app/
 │   │   ├── auth.py        # Parola ve session işlemleri
 │   │   ├── audit.py       # Güvenli admin hareket kayıtları
+│   │   ├── backup_cli.py  # Şifreli snapshot, doğrulama ve restore CLI'ı
 │   │   ├── rate_limit.py  # Kalıcı auth deneme sınırları
 │   │   ├── database.py    # SQLite bağlantısı ve şema kurulumu
 │   │   ├── main.py        # FastAPI uygulaması ve endpoint'ler
@@ -343,7 +351,8 @@ netstat -ano | Select-String ":8000|:5173"
 - [PWA ve çevrimdışı davranış](docs/PWA.md)
 - [Güvenlik modeli](docs/SECURITY.md)
 - [Çok kullanıcılı işletim ve admin hesabı](docs/MULTI_USER.md)
-- [JSON yedekleme ve geri yükleme](docs/BACKUP.md)
+- [Kullanıcı JSON yedekleme ve geri yükleme](docs/BACKUP.md)
+- [Otomatik şifreli veritabanı yedekleri](docs/ENCRYPTED_BACKUPS.md)
 - [Veritabanı migration sistemi](docs/MIGRATIONS.md)
 - [Docker kurulumu](docs/DOCKER.md)
 - [HTTPS deployment](docs/DEPLOYMENT.md)

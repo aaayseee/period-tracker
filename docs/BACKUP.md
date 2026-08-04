@@ -1,6 +1,8 @@
-# JSON Yedekleme ve Geri Yükleme
+# Kullanıcı JSON Yedekleme ve Geri Yükleme
 
 Luna, profil ayarlarını ve regl geçmişini taşınabilir bir JSON dosyasına aktarabilir ve aynı biçimde geri yükleyebilir.
+
+Bu belge kullanıcı bazlı, düz metin JSON akışını açıklar. Sunucudaki tüm hesapları ve veritabanını kapsayan AES-256-GCM korumalı otomatik yedekler için [Otomatik şifreli veritabanı yedekleri](ENCRYPTED_BACKUPS.md) belgesini kullan.
 
 ## Yedek alma
 

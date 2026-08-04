@@ -49,5 +49,45 @@ services:
       retries: 5
       start_period: 5s
 
+  backup:
+    profiles: ["backups"]
+    build:
+      context: ./backend
+    restart: unless-stopped
+    init: true
+    command: ["python", "-m", "app.backup_cli", "schedule"]
+    environment:
+      PERIOD_TRACKER_DB: /app/data/period_tracker.db
+      PERIOD_TRACKER_BACKUP_DIR: /app/backups
+      PERIOD_TRACKER_BACKUP_KEY: "${PERIOD_TRACKER_BACKUP_KEY:-}"
+      PERIOD_TRACKER_BACKUP_INTERVAL_HOURS: "${PERIOD_TRACKER_BACKUP_INTERVAL_HOURS:-24}"
+      PERIOD_TRACKER_BACKUP_RETENTION_DAYS: "${PERIOD_TRACKER_BACKUP_RETENTION_DAYS:-30}"
+      PERIOD_TRACKER_BACKUP_MIN_FILES: "${PERIOD_TRACKER_BACKUP_MIN_FILES:-3}"
+    volumes:
+      - luna-data:/app/data:ro
+      - luna-backups:/app/backups
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.backup_cli", "status"]
+      interval: 30m
+      timeout: 30s
+      retries: 2
+      start_period: 30s
+
+  recovery:
+    profiles: ["recovery"]
+    build:
+      context: ./backend
+    restart: "no"
+    init: true
+    command: ["python", "-m", "app.backup_cli", "--help"]
+    environment:
+      PERIOD_TRACKER_DB: /app/data/period_tracker.db
+      PERIOD_TRACKER_BACKUP_DIR: /app/backups
+      PERIOD_TRACKER_BACKUP_KEY: "${PERIOD_TRACKER_BACKUP_KEY:-}"
+    volumes:
+      - luna-data:/app/data
+      - luna-backups:/app/backups
+
 volumes:
   luna-data:
+  luna-backups:

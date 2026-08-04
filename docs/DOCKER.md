@@ -1,9 +1,10 @@
 # Docker ile Kurulum
 
-Bu kurulum Luna'yı iki container ile çalıştırır:
+Bu kurulum Luna'yı iki temel ve bir isteğe bağlı container ile çalıştırır:
 
 - `frontend`: React production build'ini sunan Nginx; hosta açılan tek servis.
 - `backend`: FastAPI, migration runner ve SQLite erişimi; yalnız Compose iç ağında.
+- `backup`: yalnız `backups` profiliyle başlayan, günlük AES-256-GCM şifreli SQLite snapshot servisi.
 
 SQLite dosyası `luna-data` named volume'ünde tutulur. Container yeniden oluşturulsa veya `docker compose down` çalıştırılsa bile veriler korunur.
 
@@ -61,7 +62,7 @@ docker compose logs -f backend
 docker compose logs -f frontend
 ```
 
-Her iki servisin de `healthy` olması beklenir.
+Temel kurulumda frontend ve backend servislerinin `healthy` olması beklenir. Şifreli yedek profili etkinse `backup` da `healthy` olmalıdır.
 
 ## Durdurma ve yeniden başlatma
 
@@ -112,7 +113,7 @@ docker compose down -v
 
 `-v` seçeneği named volume'ü ve içindeki SQLite verisini siler. Bu komutu yalnızca verileri bilinçli olarak tamamen sıfırlamak istediğinde kullan.
 
-Normal yedek için uygulamadaki **Yedekle** düğmesini kullan. Docker seviyesinde bakım öncesinde container'ları durdurup volume yedeği almak da mümkündür; JSON yedeği farklı kurulumlara taşımak için daha pratiktir.
+Kullanıcı bazlı taşınabilir yedek için uygulamadaki **Yedekle** düğmesini kullan. Tüm sunucuyu kapsayan otomatik, şifreli ve doğrulanmış yedek servisi için [şifreli yedek rehberini](ENCRYPTED_BACKUPS.md) izle. Veritabanı `luna-data`, şifreli dosyalar ayrı `luna-backups` named volume'ünde tutulur.
 
 ## Portu değiştirme
 

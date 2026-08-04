@@ -114,7 +114,7 @@ Limit olayları SQLite'ta tutulduğu için backend yeniden başladığında kayb
 - Audit loglar için saklama süresi ve dış izleme/uyarı politikası belirle
 - Parola sıfırlama ve e-posta doğrulama tasarla
 - SQLite/veritabanı dosyasını şifreli diskte tut
-- Düzenli şifreli yedek al ve geri yüklemeyi test et
+- Düzenli AES-256-GCM yedek servisi ve kontrollü restore CLI'ı mevcut; production'da off-site kopyayı ve periyodik gerçek restore tatbikatını işlet
 - Uygulama loglarına sağlık verisi, parola veya cookie yazma
 - Dependency ve güvenlik taramalarını CI'a ekle
 - Secret'ları repository'ye koyma
@@ -153,6 +153,8 @@ JSON geri yükleme:
 - Tek transaction kullanır; hata halinde tüm değişiklikleri geri alır.
 
 JSON dosyası şifreli değildir. Paylaşılmamalı; bulut veya taşınabilir diskte saklanacaksa ayrıca şifrelenmelidir.
+
+Tam SQLite yedekleri ayrı `luna-backups` volume'ünde AES-256-GCM ile korunur. Her snapshot SQLite online backup API'siyle alınır; şifrelemeden önce ve geri yüklemede bütünlük/foreign key kontrolü yapılır. Şifre anahtarı yalnız Git-ignored `.env.backup` dosyasından verilir. Bu sistem çalışan `luna-data` volume'ünü şifrelemez ve aynı hosttaki backup volume'ü tek başına felaket kurtarma sayılmaz. Ayrıntılar: [Otomatik şifreli veritabanı yedekleri](ENCRYPTED_BACKUPS.md).
 
 ## Güvenlik açığı bildirimi
 

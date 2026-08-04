@@ -74,6 +74,7 @@ Değerlendirme: 3. aşama çalışır durumdadır. UI component testleri ve eri�
 | Lighthouse/installability doğrulaması | Planlandı | Gerçek HTTPS ortamında yapılmalı |
 | Docker ile kurulum | Tamamlandı | Multi-stage frontend, non-root backend, Nginx reverse proxy, healthcheck ve kalıcı named volume |
 | HTTPS deployment | Kısmi | Caddy production katmanı, Secure cookie/CORS ve yerel TLS testi tamam; gerçek domain/VPS yayını için dış altyapı bilgileri gerekli |
+| Otomatik şifreli yedek | Tamamlandı | Online SQLite snapshot, AES-256-GCM, günlük profil, retention, healthcheck ve kontrollü restore testleri |
 
 Değerlendirme: Manifest ve Service Worker doğru temel parçaları sağlar; “tam offline-first ve production-ready PWA” aşaması henüz tamamlanmış sayılmaz.
 
@@ -93,7 +94,7 @@ Bu nedenle doğru ifade:
 2. Secure cookie ortam değişkeni
 3. Gerçek domain CORS ayarı
 4. Reverse proxy seviyesinde dağıtık rate limiting
-5. Şifreli, geri yüklemesi test edilmiş yedek
+5. Şifreli yedeği off-site depoya kopyalama ve production verisi dışında periyodik restore tatbikatı
 6. Auth rate limit metriklerini ve alarmlarını izleme
 
 ### P1 — Sağlamlık
