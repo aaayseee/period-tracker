@@ -82,6 +82,17 @@ Mevcut sürüm şu ortamı hedefler:
 - Güvenilir yerel ağ ya da HTTPS
 - Düşük istek hacmi
 
+Auth koruması:
+
+- Login: aynı IP+e-posta kovasında 15 dakikada 5 başarısız deneme
+- Parola kurtarma: 30 dakikada 5 başarısız deneme
+- Davetli kayıt: 60 dakikada 10 başarısız deneme
+- Parola değiştirme: 15 dakikada 5 başarısız deneme
+- Limit aşımında `429 Too Many Requests` ve `Retry-After` başlığı
+- Başarılı işlem ilgili kovayı temizler; düz e-posta/IP yerine SHA-256 kova hash'i saklanır
+
+Limit olayları SQLite'ta tutulduğu için backend yeniden başladığında kaybolmaz. Yüksek ölçekli veya çok instance'lı dağıtımda merkezi Redis tabanlı limiter gerekir.
+
 Şunlara karşı production koruması henüz tam değildir:
 
 - Dağıtık brute-force saldırıları
@@ -97,7 +108,7 @@ Mevcut sürüm şu ortamı hedefler:
 - `PERIOD_TRACKER_SECURE_COOKIE=true` ayarla — production Compose katmanında zorunlu
 - CORS origin listesini gerçek domain ile sınırla — `LUNA_DOMAIN` üzerinden ayarlanıyor
 - Reverse proxy üzerinde HSTS, CSP, X-Content-Type-Options ve Referrer-Policy ekle — Caddyfile içinde yapılandırıldı
-- Login rate limiting ve geçici hesap kilidi ekle
+- Dağıtık saldırılar için reverse proxy/merkezi rate limiting ekle
 - Admin işlemleri için audit log ekle
 - Parola sıfırlama ve e-posta doğrulama tasarla
 - SQLite/veritabanı dosyasını şifreli diskte tut
@@ -116,7 +127,7 @@ Hesap oluşturulurken 80-bit rastgele bir kurtarma kodu kullanıcıya bir kez g�
 - Parola değişikliği veya kurtarma tüm eski session'ları kapatır.
 - Parola ve kurtarma kodu birlikte kaybedilirse otomatik hesap kurtarma mümkün değildir.
 
-Production ortamında kurtarma endpoint'i için rate limiting zorunludur.
+Production ortamında uygulama limiter'ına ek olarak reverse proxy seviyesinde genel istek limiti önerilir.
 
 ## Veritabanı ve yedek
 

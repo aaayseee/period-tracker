@@ -24,6 +24,8 @@ Korumalı endpoint'ler geçersiz veya eksik session için:
 
 ve `401 Unauthorized` döndürür.
 
+Login, kayıt, parola kurtarma ve parola değiştirme uçları başarısız denemeleri sınırlar. Limit aşılırsa `429 Too Many Requests` ile saniye cinsinden `Retry-After` başlığı döner.
+
 ## Auth endpoint'leri
 
 ### `POST /api/auth/register`

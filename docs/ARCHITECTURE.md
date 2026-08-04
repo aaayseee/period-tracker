@@ -22,6 +22,7 @@ Nginx statik frontend'i sunar ve API isteklerini backend container'ına yönlend
 |---|---|
 | `main.py` | FastAPI endpoint'leri, kayıt transaction'ı, kullanıcı/admin işlemleri |
 | `auth.py` | PBKDF2 parola, recovery/davet hash'leri, session ve rol dependency'leri |
+| `rate_limit.py` | Hash'lenmiş IP+hesap kovalarıyla kalıcı auth deneme sınırları |
 | `database.py` | SQLite bağlantısı, foreign key ayarı ve migration başlangıcı |
 | `migrations/` | Sıralı, transaction'lı ve geri alınabilir şema yükseltmeleri |
 | `schemas.py` | Pydantic istek/yanıt sözleşmeleri |

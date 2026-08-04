@@ -3,7 +3,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable, Optional, Sequence
 
-from .versions import v0001_initial, v0002_recovery_code, v0003_multi_user
+from .versions import (
+    v0001_initial,
+    v0002_recovery_code,
+    v0003_multi_user,
+    v0004_auth_rate_limits,
+)
 
 
 MigrationFunction = Callable[[sqlite3.Connection], None]
@@ -36,6 +41,11 @@ MIGRATIONS: tuple[Migration, ...] = (
         v0002_recovery_code.upgrade,
     ),
     Migration(v0003_multi_user.VERSION, v0003_multi_user.NAME, v0003_multi_user.upgrade),
+    Migration(
+        v0004_auth_rate_limits.VERSION,
+        v0004_auth_rate_limits.NAME,
+        v0004_auth_rate_limits.upgrade,
+    ),
 )
 
 

@@ -66,9 +66,9 @@ Değerlendirme: 3. aşama çalışır durumdadır. UI component testleri ve eri�
 |---|---|---|
 | Web App Manifest | Tamamlandı | Ad, kısa ad, tema, standalone, dil ve ikon |
 | Service Worker | MVP tamamlandı | Uygulama kabuğunda network-first cache |
-| İkon ve uygulama adı | MVP tamamlandı | SVG ikon mevcut; production için PNG boyutları eksik |
+| İkon ve uygulama adı | Tamamlandı | SVG kaynak, PNG 192/512, maskable 512 ve Apple touch 180 ikonları |
 | Telefona kurulum | Kısmi | HTTPS altyapısı hazır; gerçek domain yayını ve fiziksel telefon testi bekliyor |
-| Çevrimdışı arayüz | MVP tamamlandı | Daha önce yüklenen shell açılabilir |
+| Çevrimdışı arayüz | Tamamlandı | Service Worker tarafından önbelleğe alınan özel çevrimdışı hata ekranı |
 | Çevrimdışı veri okuma/yazma | Planlandı | API cache, IndexedDB queue ve sync yok |
 | Lighthouse/installability doğrulaması | Planlandı | Gerçek HTTPS ortamında yapılmalı |
 | Docker ile kurulum | Tamamlandı | Multi-stage frontend, non-root backend, Nginx reverse proxy, healthcheck ve kalıcı named volume |
@@ -91,9 +91,9 @@ Bu nedenle doğru ifade:
 1. HTTPS reverse proxy/deployment
 2. Secure cookie ortam değişkeni
 3. Gerçek domain CORS ayarı
-4. Login rate limiting
+4. Reverse proxy seviyesinde dağıtık rate limiting
 5. Şifreli, geri yüklemesi test edilmiş yedek
-6. Auth ve recovery endpoint'leri için rate limiting
+6. Auth rate limit metriklerini ve alarmlarını izleme
 
 ### P1 — Sağlamlık
 
@@ -105,11 +105,9 @@ Bu nedenle doğru ifade:
 
 ### P2 — PWA kalitesi
 
-1. PNG 192/512 ikonlar ve Apple touch icon
-2. Offline fallback ekranı
-3. Service Worker güncelleme bildirimi
-4. Lighthouse denetimi
-5. İstenirse şifreli IndexedDB ve offline sync
+1. Service Worker güncelleme bildirimi
+2. Lighthouse denetimi
+3. İstenirse şifreli IndexedDB ve offline sync
 
 ### P3 — Daha yüksek kullanıcı ölçeği gerekirse
 

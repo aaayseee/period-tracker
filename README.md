@@ -13,6 +13,7 @@ Uygulama yerel kullanım için çalışan bir MVP'dir:
 - Profil, regl, PMS, ovülasyon, yedek ve tahmin verilerinde hesap bazlı veri izolasyonu
 - Parola değiştirme ve tek kullanımlık gösterilen kurtarma kodu
 - PBKDF2 ile tuzlanmış parola hash'i
+- Login, kurtarma ve kayıt uçlarında kalıcı SQLite rate limiting
 - 30 günlük, sunucu tarafında doğrulanan HttpOnly oturum
 - Regl başlangıç/bitiş tarihi, akış, belirti ve not kaydı
 - Tek dokunuşla “Reglim başladı / bitti” akışı
@@ -232,6 +233,12 @@ Backend ayarları ortam değişkenleriyle değiştirilebilir:
 | `PERIOD_TRACKER_SESSION_DAYS` | `30` | Session geçerlilik süresi; 1–365 gün |
 | `PERIOD_TRACKER_SECURE_COOKIE` | `false` | HTTPS üretiminde `true` olmalı |
 | `PERIOD_TRACKER_CORS_ORIGINS` | localhost adresleri | Virgülle ayrılmış izinli frontend origin'leri |
+| `PERIOD_TRACKER_LOGIN_ATTEMPTS` | `5` | Login penceresinde izin verilen başarısız deneme |
+| `PERIOD_TRACKER_LOGIN_WINDOW_SECONDS` | `900` | Login rate limit penceresi |
+| `PERIOD_TRACKER_RECOVERY_ATTEMPTS` | `5` | Kurtarma penceresinde izin verilen başarısız deneme |
+| `PERIOD_TRACKER_RECOVERY_WINDOW_SECONDS` | `1800` | Kurtarma rate limit penceresi |
+| `PERIOD_TRACKER_REGISTER_ATTEMPTS` | `10` | Kayıt penceresinde izin verilen başarısız deneme |
+| `PERIOD_TRACKER_REGISTER_WINDOW_SECONDS` | `3600` | Kayıt rate limit penceresi |
 
 PowerShell örneği:
 
@@ -265,6 +272,7 @@ period-tracker/
 ├── backend/
 │   ├── app/
 │   │   ├── auth.py        # Parola ve session işlemleri
+│   │   ├── rate_limit.py  # Kalıcı auth deneme sınırları
 │   │   ├── database.py    # SQLite bağlantısı ve şema kurulumu
 │   │   ├── main.py        # FastAPI uygulaması ve endpoint'ler
 │   │   ├── schemas.py     # Pydantic veri sözleşmeleri
@@ -293,7 +301,7 @@ Yerel geliştirmede `localhost` güvenli bağlam kabul edilir. Gerçek telefonda
 - Android/Chrome: Menü → **Ana ekrana ekle** veya **Uygulamayı yükle**
 - iPhone/Safari: Paylaş → **Ana Ekrana Ekle**
 
-Mevcut Service Worker uygulama kabuğunu önbelleğe alır; API verilerini çevrimdışı yazıp sonradan senkronize etmez. Ayrıntılar: [PWA ve çevrimdışı davranış](docs/PWA.md).
+Manifest 192×192, 512×512 ve maskable PNG ikonları; iOS için 180×180 Apple touch icon içerir. Service Worker bağlantı yokken özel çevrimdışı ekranını gösterir. API verilerini çevrimdışı yazıp sonradan senkronize etmez. Ayrıntılar: [PWA ve çevrimdışı davranış](docs/PWA.md).
 
 ## Sorun giderme
 

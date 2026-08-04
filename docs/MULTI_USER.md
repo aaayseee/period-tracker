@@ -72,4 +72,4 @@ Varsayılan session süresi 30 gündür. Bu süre hesabın veya sağlık veriler
 - `PERIOD_TRACKER_SECURE_COOKIE=true` ve HTTPS kullan.
 - SQLite volume'ünü düzenli ve şifreli olarak yedekle.
 - `docker compose down -v` komutunun tüm kalıcı veriyi sildiğini unutma.
-- Uygulama ve SSH erişim loglarını izle; rate limiting eklenene kadar adresi gereksiz yere herkese açık paylaşma.
+- Uygulama ve SSH erişim loglarını izle; uygulama içi rate limiting'e ek olarak production reverse proxy limitlerini değerlendir.

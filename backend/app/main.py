@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from typing import List, Optional
 
-from fastapi import Cookie, Depends, FastAPI, HTTPException, Response, status
+from fastapi import Cookie, Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import get_connection, init_database
@@ -52,6 +52,7 @@ from .schemas import (
     RestoreResult,
 )
 from .services import calculate_insights, row_to_period, row_to_profile, utc_now
+from .rate_limit import clear_rate_limit, enforce_rate_limit, record_failed_attempt
 
 
 @asynccontextmanager
@@ -106,15 +107,17 @@ def set_session_cookie(response: Response, token: str) -> None:
 @app.post("/api/auth/register", response_model=RegistrationResult)
 def register(
     payload: AccountRegister,
+    request: Request,
     response: Response,
     connection: sqlite3.Connection = Depends(get_connection),
 ) -> RegistrationResult:
+    rate_limit_bucket = enforce_rate_limit(
+        connection, "register", request, payload.email
+    )
     clean_name = payload.name.strip()
     if not clean_name:
         raise HTTPException(status_code=422, detail="Isim bos birakilamaz.")
     email = normalize_email(payload.email)
-    salt, password_digest = hash_password(payload.password)
-    recovery_code = generate_recovery_code()
     period_end = payload.last_period_start + timedelta(
         days=payload.average_period_length - 1
     )
@@ -144,6 +147,8 @@ def register(
                 detail="Davet kodu geçersiz, süresi dolmuş veya kullanım hakkı bitmiş.",
             )
 
+        salt, password_digest = hash_password(payload.password)
+        recovery_code = generate_recovery_code()
         cursor = connection.execute(
             """
             INSERT INTO accounts (
@@ -179,12 +184,15 @@ def register(
             (invite["id"],),
         )
         token = create_session(connection, account_id, commit=False)
+        clear_rate_limit(connection, rate_limit_bucket)
         connection.commit()
     except HTTPException:
         connection.rollback()
+        record_failed_attempt(connection, "register", rate_limit_bucket)
         raise
     except sqlite3.IntegrityError as exc:
         connection.rollback()
+        record_failed_attempt(connection, "register", rate_limit_bucket)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Hesap oluşturulamadı; e-posta adresini kontrol et.",
@@ -196,10 +204,12 @@ def register(
 @app.post("/api/auth/login", response_model=AuthSession)
 def login(
     payload: AccountLogin,
+    request: Request,
     response: Response,
     connection: sqlite3.Connection = Depends(get_connection),
 ) -> AuthSession:
     email = normalize_email(payload.email)
+    rate_limit_bucket = enforce_rate_limit(connection, "login", request, email)
     account = connection.execute(
         "SELECT * FROM accounts WHERE email = ? COLLATE NOCASE", (email,)
     ).fetchone()
@@ -208,11 +218,13 @@ def login(
         account["password_salt"],
         account["password_hash"],
     ):
+        record_failed_attempt(connection, "login", rate_limit_bucket)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="E-posta veya parola hatali.",
         )
 
+    clear_rate_limit(connection, rate_limit_bucket)
     token = create_session(connection, account["id"])
     set_session_cookie(response, token)
     return AuthSession(email=account["email"], role=account["role"])
@@ -231,26 +243,33 @@ def auth_session(
 )
 def change_password(
     payload: PasswordChange,
+    request: Request,
     response: Response,
     account: sqlite3.Row = Depends(require_account),
     connection: sqlite3.Connection = Depends(get_connection),
 ) -> AuthSession:
+    rate_limit_bucket = enforce_rate_limit(
+        connection, "change_password", request, str(account["id"])
+    )
     if not verify_password(
         payload.current_password,
         account["password_salt"],
         account["password_hash"],
     ):
+        record_failed_attempt(connection, "change_password", rate_limit_bucket)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Mevcut parola hatali.",
         )
     if payload.current_password == payload.new_password:
+        record_failed_attempt(connection, "change_password", rate_limit_bucket)
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Yeni parola mevcut paroladan farkli olmali.",
         )
 
     salt, password_digest = hash_password(payload.new_password)
+    clear_rate_limit(connection, rate_limit_bucket)
     connection.execute(
         """
         UPDATE accounts
@@ -295,10 +314,12 @@ def rotate_recovery_code(
 )
 def recover_password(
     payload: PasswordRecovery,
+    request: Request,
     response: Response,
     connection: sqlite3.Connection = Depends(get_connection),
 ) -> PasswordRecoveryResult:
     email = normalize_email(payload.email)
+    rate_limit_bucket = enforce_rate_limit(connection, "recover", request, email)
     account = connection.execute(
         "SELECT * FROM accounts WHERE email = ? COLLATE NOCASE", (email,)
     ).fetchone()
@@ -306,12 +327,14 @@ def recover_password(
         payload.recovery_code,
         account["recovery_code_hash"],
     ):
+        record_failed_attempt(connection, "recover", rate_limit_bucket)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="E-posta veya kurtarma kodu hatali.",
         )
 
     salt, password_digest = hash_password(payload.new_password)
+    clear_rate_limit(connection, rate_limit_bucket)
     new_recovery_code = generate_recovery_code()
     connection.execute(
         """

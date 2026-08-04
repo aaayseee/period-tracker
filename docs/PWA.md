@@ -21,7 +21,7 @@ Luna aşağıdaki temel PWA parçalarına sahiptir:
 | Görünüm | `standalone` |
 | Tema | `#a34c61` |
 | Dil | `tr` |
-| İkon | Ölçeklenebilir SVG, maskable |
+| İkon | SVG kaynak, PNG 192/512, maskable 512 ve Apple touch 180 |
 
 ## Service Worker stratejisi
 
@@ -100,8 +100,9 @@ Domain, DNS, Caddy ve production Compose adımları için [HTTPS deployment rehb
 
 ## Production için eksikler
 
-- 192x192 ve 512x512 PNG ikonların eklenmesi
-- iOS için doğrulanmış PNG apple-touch-icon
+- 192x192 ve 512x512 PNG ikonlar eklendi
+- 512x512 maskable ikon ve iOS için 180x180 PNG apple-touch-icon eklendi
+- Bağlantı kurulamadığında özel `offline.html` ekranı eklendi
 - Cache sürümünün release sürecinde otomatik artırılması
 - Offline fallback ekranı
 - Güncelleme bulunduğunda kullanıcıya yenileme bildirimi

@@ -11,7 +11,8 @@ backend/app/migrations/
 └── versions/
     ├── v0001_initial.py        # İlk tablolar ve indeksler
     ├── v0002_recovery_code.py  # recovery_code_hash sütunu
-    └── v0003_multi_user.py     # hesap sahipliği, roller ve davetler
+    ├── v0003_multi_user.py     # hesap sahipliği, roller ve davetler
+    └── v0004_auth_rate_limits.py # kalıcı auth rate limit olayları
 ```
 
 Uygulanan migration'lar SQLite içindeki `schema_migrations` tablosuna kaydedilir:
@@ -53,7 +54,8 @@ Database: C:\...\backend\data\period_tracker.db
 [x] 0001 initial_schema (2026-08-03 14:30:00)
 [x] 0002 add_recovery_code_hash (2026-08-03 14:30:00)
 [x] 0003 multi_user_accounts_and_invites (2026-08-03 14:31:00)
-Latest version: 0003
+[x] 0004 auth_rate_limit_events (2026-08-04 10:00:00)
+Latest version: 0004
 ```
 
 Bekleyen migration'ları manuel uygulamak için:
@@ -66,13 +68,13 @@ Bekleyen migration'ları manuel uygulamak için:
 
 ## Yeni migration ekleme
 
-Örnek olarak dördüncü migration:
+Örnek olarak beşinci migration:
 
 ```python
-# backend/app/migrations/versions/v0004_example.py
+# backend/app/migrations/versions/v0005_example.py
 import sqlite3
 
-VERSION = 4
+VERSION = 5
 NAME = "add_example_column"
 
 
@@ -98,8 +100,9 @@ Migration sistemi eklenmeden önce oluşturulan Luna veritabanlarında `schema_m
 - `0001`, var olan tabloları `CREATE ... IF NOT EXISTS` ile korur.
 - `0002`, `recovery_code_hash` sütunu zaten varsa tekrar eklemez.
 - `0003`, singleton hesabı `user` rolünde korur; profil ve tüm regl kayıtlarını aynı hesabın `account_id` değeriyle ilişkilendirir, ardından admin/davet desteğini ekler.
+- `0004`, düz e-posta veya IP saklamayan kalıcı auth rate limit olay tablosunu ve indekslerini ekler.
 - Hesap kimliği, profil, session ve regl kayıt içerikleri silinmez.
-- Üç migration başarıyla geçmişe kaydedilir.
+- Dört migration başarıyla geçmişe kaydedilir.
 
 Bu geçiş otomatik testte gerçek bir legacy şema ve örnek hesap verisiyle doğrulanır.
 

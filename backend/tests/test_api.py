@@ -496,3 +496,45 @@ def test_admin_can_manage_invites_and_status_but_not_health_data(tmp_path):
         assert admin_client.post(
             f"/api/admin/invites/{created_invite.json()['id']}/revoke"
         ).json()["revoked_at"] is not None
+
+
+def test_login_and_recovery_are_rate_limited(tmp_path):
+    with build_client(tmp_path) as client:
+        registration = register(client, email="limited@example.com")
+        assert registration.status_code == 200
+        recovery_code = registration.json()["recovery_code"]
+        client.post("/api/auth/logout")
+
+        for _ in range(5):
+            response = client.post(
+                "/api/auth/login",
+                json={"email": "limited@example.com", "password": "yanlis-parola"},
+            )
+            assert response.status_code == 401
+        blocked_login = client.post(
+            "/api/auth/login",
+            json={"email": "limited@example.com", "password": "guvenli-parola-123"},
+        )
+        assert blocked_login.status_code == 429
+        assert int(blocked_login.headers["retry-after"]) > 0
+
+        for _ in range(5):
+            response = client.post(
+                "/api/auth/recover",
+                json={
+                    "email": "limited@example.com",
+                    "recovery_code": "XXXXX-XXXXX-XXXXX-XXXXX",
+                    "new_password": "yeni-guvenli-parola",
+                },
+            )
+            assert response.status_code == 401
+        blocked_recovery = client.post(
+            "/api/auth/recover",
+            json={
+                "email": "limited@example.com",
+                "recovery_code": recovery_code,
+                "new_password": "yeni-guvenli-parola",
+            },
+        )
+        assert blocked_recovery.status_code == 429
+        assert int(blocked_recovery.headers["retry-after"]) > 0
