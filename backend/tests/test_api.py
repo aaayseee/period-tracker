@@ -13,6 +13,11 @@ def build_client(tmp_path):
     return TestClient(app)
 
 
+def assert_utc_timestamp(value: str) -> None:
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    assert parsed.utcoffset() == timedelta(0)
+
+
 def register(client, **overrides):
     from app.admin_cli import create_admin_account
     from app.auth import generate_invite_code, hash_invite_code
@@ -473,9 +478,16 @@ def test_admin_can_manage_invites_and_status_but_not_health_data(tmp_path):
         )
         assert created_invite.status_code == 201
         assert len(created_invite.json()["invite_code"].replace("-", "")) == 24
+        assert_utc_timestamp(created_invite.json()["expires_at"])
+        assert_utc_timestamp(created_invite.json()["created_at"])
         listed_invites = admin_client.get("/api/admin/invites").json()
         assert listed_invites
         assert all("invite_code" not in invite for invite in listed_invites)
+        assert all(
+            datetime.fromisoformat(invite["expires_at"].replace("Z", "+00:00")).utcoffset()
+            == timedelta(0)
+            for invite in listed_invites
+        )
 
         users = admin_client.get("/api/admin/users")
         assert users.status_code == 200
@@ -483,6 +495,8 @@ def test_admin_can_manage_invites_and_status_but_not_health_data(tmp_path):
         assert set(user_row) == {
             "id", "email", "role", "is_active", "created_at", "updated_at"
         }
+        assert_utc_timestamp(user_row["created_at"])
+        assert_utc_timestamp(user_row["updated_at"])
         disabled = admin_client.patch(
             f"/api/admin/users/{user_row['id']}", json={"is_active": False}
         )
@@ -495,9 +509,11 @@ def test_admin_can_manage_invites_and_status_but_not_health_data(tmp_path):
             json={"email": "user@example.com", "password": "guvenli-parola-123"},
         ).status_code == 401
 
-        assert admin_client.post(
+        revoked_invite = admin_client.post(
             f"/api/admin/invites/{created_invite.json()['id']}/revoke"
-        ).json()["revoked_at"] is not None
+        ).json()
+        assert revoked_invite["revoked_at"] is not None
+        assert_utc_timestamp(revoked_invite["revoked_at"])
 
         rotated = admin_client.post("/api/auth/recovery-code")
         assert rotated.status_code == 200
@@ -516,6 +532,11 @@ def test_admin_can_manage_invites_and_status_but_not_health_data(tmp_path):
                 "id", "admin_email", "action", "target_type", "target_id",
                 "details", "created_at",
             }
+            for item in audit_logs.json()
+        )
+        assert all(
+            datetime.fromisoformat(item["created_at"].replace("Z", "+00:00")).utcoffset()
+            == timedelta(0)
             for item in audit_logs.json()
         )
         serialized_logs = str(audit_logs.json()).lower()

@@ -42,6 +42,7 @@ import type {
   ProfileUpdatePayload,
   RestoreMode
 } from "./types";
+import { formatApiDate, formatApiDateTime, parseApiDateTime } from "./dateTime";
 
 const MONTHS = [
   "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
@@ -895,7 +896,7 @@ function AdminDashboard({ session, onLogout }: { session: AuthSession; onLogout:
         <div className="admin-list">
           {userAccounts.map((user) => (
             <article key={user.id} className="admin-row">
-              <div><strong>{user.email}</strong><small>Oluşturulma: {new Date(user.created_at).toLocaleDateString("tr-TR")}</small></div>
+              <div><strong>{user.email}</strong><small>Oluşturulma: {formatApiDate(user.created_at)}</small></div>
               <button className={user.is_active ? "secondary-button" : "primary-button"} onClick={() => toggleUser(user)} disabled={busy}>{user.is_active ? "Devre dışı bırak" : "Etkinleştir"}</button>
             </article>
           ))}
@@ -907,10 +908,10 @@ function AdminDashboard({ session, onLogout }: { session: AuthSession; onLogout:
         <div className="section-heading"><div><span className="eyebrow">DAVETLER</span><h2>Davet geçmişi</h2></div></div>
         <div className="admin-list">
           {invites.map((invite) => {
-            const unavailable = Boolean(invite.revoked_at) || invite.use_count >= invite.max_uses || new Date(invite.expires_at) <= new Date();
+            const unavailable = Boolean(invite.revoked_at) || invite.use_count >= invite.max_uses || parseApiDateTime(invite.expires_at) <= new Date();
             return (
               <article key={invite.id} className="admin-row">
-                <div><strong>Davet #{invite.id} · {invite.use_count}/{invite.max_uses} kullanım</strong><small>Son tarih: {new Date(invite.expires_at).toLocaleString("tr-TR")}{invite.revoked_at ? " · İptal edildi" : ""}</small></div>
+                <div><strong>Davet #{invite.id} · {invite.use_count}/{invite.max_uses} kullanım</strong><small>Son tarih: {formatApiDateTime(invite.expires_at)}{invite.revoked_at ? " · İptal edildi" : ""}</small></div>
                 <button className="secondary-button" onClick={() => revokeInvite(invite)} disabled={busy || unavailable}>İptal et</button>
               </article>
             );
@@ -936,7 +937,7 @@ function AdminDashboard({ session, onLogout }: { session: AuthSession; onLogout:
             const target = log.target_id !== null ? ` · #${log.target_id}` : "";
             return (
               <article key={log.id} className="admin-row audit-row">
-                <div><strong>{labels[log.action] ?? log.action}{target}</strong><small>{log.admin_email} · {new Date(log.created_at).toLocaleString("tr-TR")}</small></div>
+                <div><strong>{labels[log.action] ?? log.action}{target}</strong><small>{log.admin_email} · {formatApiDateTime(log.created_at)}</small></div>
               </article>
             );
           })}

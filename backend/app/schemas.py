@@ -1,10 +1,35 @@
-from datetime import date, datetime
-from typing import Dict, List, Literal, Optional
+from datetime import date, datetime, timezone
+from typing import Annotated, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, BeforeValidator, Field, model_validator
 
 
 FlowLevel = Literal["light", "medium", "heavy"]
+
+
+def _as_utc_datetime(value: object) -> object:
+    """Treat legacy naive SQLite timestamps as UTC and normalize aware values."""
+
+    parsed: datetime
+    if isinstance(value, datetime):
+        parsed = value
+    elif isinstance(value, str):
+        normalized = value.strip()
+        if normalized.endswith("Z"):
+            normalized = f"{normalized[:-1]}+00:00"
+        try:
+            parsed = datetime.fromisoformat(normalized)
+        except ValueError:
+            return value
+    else:
+        return value
+
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+UtcDateTime = Annotated[datetime, BeforeValidator(_as_utc_datetime)]
 
 
 class PeriodBase(BaseModel):
@@ -33,8 +58,8 @@ class PeriodUpdate(PeriodBase):
 
 class Period(PeriodBase):
     id: int
-    created_at: datetime
-    updated_at: datetime
+    created_at: UtcDateTime
+    updated_at: UtcDateTime
 
 
 class ProfileSetup(BaseModel):
@@ -96,11 +121,11 @@ class AdminInviteCreate(BaseModel):
 
 class AdminInvite(BaseModel):
     id: int
-    expires_at: datetime
+    expires_at: UtcDateTime
     max_uses: int
     use_count: int
-    revoked_at: Optional[datetime]
-    created_at: datetime
+    revoked_at: Optional[UtcDateTime]
+    created_at: UtcDateTime
 
 
 class AdminInviteCreated(AdminInvite):
@@ -112,8 +137,8 @@ class AdminUser(BaseModel):
     email: str
     role: Literal["admin", "user"]
     is_active: bool
-    created_at: datetime
-    updated_at: datetime
+    created_at: UtcDateTime
+    updated_at: UtcDateTime
 
 
 class AdminUserStatusUpdate(BaseModel):
@@ -127,15 +152,15 @@ class AdminAuditLog(BaseModel):
     target_type: Optional[str]
     target_id: Optional[int]
     details: Dict[str, object]
-    created_at: datetime
+    created_at: UtcDateTime
 
 
 class Profile(BaseModel):
     name: str
     average_cycle_length: int
     average_period_length: int
-    created_at: datetime
-    updated_at: datetime
+    created_at: UtcDateTime
+    updated_at: UtcDateTime
 
 
 class Insights(BaseModel):
@@ -156,7 +181,7 @@ class Insights(BaseModel):
 
 
 class ExportData(BaseModel):
-    exported_at: datetime
+    exported_at: UtcDateTime
     profile: Optional[Profile] = None
     periods: List[Period] = Field(max_length=5000)
     schema_version: Literal[1] = 1
