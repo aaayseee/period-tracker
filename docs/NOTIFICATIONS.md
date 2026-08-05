@@ -52,12 +52,13 @@ cd ..
 
 ## Docker ile çalıştırma
 
+`compose.yaml`, kökte mevcutsa `.env.notifications` dosyasını backend ve bildirim zamanlayıcısı için otomatik yükler. Normal yeniden oluşturmalarda ayrıca `--env-file .env.notifications` yazmak gerekmez.
+
 Yerel/beta kurulumunda:
 
 ```powershell
 docker compose `
   --env-file .env.backup `
-  --env-file .env.notifications `
   --profile backups `
   --profile notifications `
   -f compose.yaml `
@@ -65,14 +66,14 @@ docker compose `
   up --build -d
 ```
 
-Production Caddy katmanında aynı `--env-file .env.notifications` ve `--profile notifications` seçenekleri eklenir.
+Production Caddy katmanında bildirim zamanlayıcısını açmak için `--profile notifications` seçeneği eklenir; aynı `.env.notifications` dosyası otomatik yüklenir.
 
 Kontroller:
 
 ```powershell
-docker compose --env-file .env.notifications --profile notifications ps
-docker compose --env-file .env.notifications --profile notifications logs notifications
-docker compose --env-file .env.notifications --profile notifications exec notifications `
+docker compose --profile notifications ps
+docker compose --profile notifications logs notifications
+docker compose --profile notifications exec notifications `
   python -m app.notification_cli send-once
 ```
 
@@ -115,8 +116,8 @@ iPhone'da **Ayarlar → Bildirimler → Luna**, Android'de **Ayarlar → Uygulam
 ### Test bildirimi gönderilmiyor
 
 ```powershell
-docker compose --env-file .env.notifications --profile notifications ps
-docker compose --env-file .env.notifications --profile notifications logs --tail 100 notifications backend
+docker compose --profile notifications ps
+docker compose --profile notifications logs --tail 100 notifications backend
 ```
 
 Backend ve notifications servisleri `healthy` olmalı. Bilgisayar, Docker Desktop, Tailscale ve Funnel çalışır durumda olmalıdır.

@@ -1,14 +1,14 @@
-const CACHE_NAME = "luna-shell-v3";
+const CACHE_NAME = "luna-shell-v4";
 const APP_SHELL = [
   "/offline.html",
   "/offline.css",
   "/offline.js",
   "/manifest.webmanifest",
   "/luna-icon.svg",
-  "/luna-icon-192.png",
-  "/luna-icon-512.png",
-  "/luna-icon-maskable-512.png",
-  "/apple-touch-icon.png"
+  "/luna-icon-192.png?v=2",
+  "/luna-icon-512.png?v=2",
+  "/luna-icon-maskable-512.png?v=2",
+  "/apple-touch-icon.png?v=2"
 ];
 
 self.addEventListener("install", (event) => {
@@ -67,8 +67,8 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(payload.title, {
       body: payload.body,
       tag: payload.tag,
-      icon: "/luna-icon-192.png",
-      badge: "/luna-icon-192.png",
+      icon: "/luna-icon-192.png?v=2",
+      badge: "/luna-icon-192.png?v=2",
       data: { url: payload.url || "/" }
     })
   );

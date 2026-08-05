@@ -6,6 +6,9 @@ services:
       context: ./backend
     restart: unless-stopped
     init: true
+    env_file:
+      - path: .env.notifications
+        required: false
     environment:
       PERIOD_TRACKER_DB: /app/data/period_tracker.db
       PERIOD_TRACKER_SESSION_DAYS: "${PERIOD_TRACKER_SESSION_DAYS:-30}"
@@ -17,9 +20,6 @@ services:
       PERIOD_TRACKER_RECOVERY_WINDOW_SECONDS: "${PERIOD_TRACKER_RECOVERY_WINDOW_SECONDS:-1800}"
       PERIOD_TRACKER_REGISTER_ATTEMPTS: "${PERIOD_TRACKER_REGISTER_ATTEMPTS:-10}"
       PERIOD_TRACKER_REGISTER_WINDOW_SECONDS: "${PERIOD_TRACKER_REGISTER_WINDOW_SECONDS:-3600}"
-      PERIOD_TRACKER_VAPID_PUBLIC_KEY: "${PERIOD_TRACKER_VAPID_PUBLIC_KEY:-}"
-      PERIOD_TRACKER_VAPID_PRIVATE_KEY: "${PERIOD_TRACKER_VAPID_PRIVATE_KEY:-}"
-      PERIOD_TRACKER_VAPID_SUBJECT: "${PERIOD_TRACKER_VAPID_SUBJECT:-}"
     volumes:
       - luna-data:/app/data
     expose:
@@ -83,12 +83,11 @@ services:
     restart: unless-stopped
     init: true
     command: ["python", "-m", "app.notification_cli", "schedule"]
+    env_file:
+      - path: .env.notifications
+        required: false
     environment:
       PERIOD_TRACKER_DB: /app/data/period_tracker.db
-      PERIOD_TRACKER_VAPID_PUBLIC_KEY: "${PERIOD_TRACKER_VAPID_PUBLIC_KEY:-}"
-      PERIOD_TRACKER_VAPID_PRIVATE_KEY: "${PERIOD_TRACKER_VAPID_PRIVATE_KEY:-}"
-      PERIOD_TRACKER_VAPID_SUBJECT: "${PERIOD_TRACKER_VAPID_SUBJECT:-}"
-      PERIOD_TRACKER_NOTIFICATION_INTERVAL_SECONDS: "${PERIOD_TRACKER_NOTIFICATION_INTERVAL_SECONDS:-300}"
     volumes:
       - luna-data:/app/data
     healthcheck:

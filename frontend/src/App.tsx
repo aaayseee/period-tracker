@@ -677,11 +677,9 @@ function SettingsModal({
           await subscription.unsubscribe();
         }
       }
-      const saved = await api.updateNotificationPreferences({ ...notificationPreferences, enabled: false });
-      setNotificationPreferences(saved);
-      if (notificationConfig) {
-        setNotificationConfig({ ...notificationConfig, has_subscription: false, preferences: saved });
-      }
+      const refreshed = await api.getNotificationConfig();
+      setNotificationPreferences(refreshed.preferences);
+      setNotificationConfig(refreshed);
       setDeviceSubscribed(false);
       setNotificationSuccess("Bu cihazdaki bildirimler kapatıldı.");
     } catch (caught) {
