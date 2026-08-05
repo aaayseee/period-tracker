@@ -40,6 +40,10 @@ from .schemas import (
     AuthSession,
     ExportData,
     Insights,
+    NotificationActionResult,
+    NotificationConfig,
+    NotificationPreferences,
+    NotificationPreferencesUpdate,
     Period,
     PeriodCreate,
     PeriodUpdate,
@@ -48,12 +52,19 @@ from .schemas import (
     PasswordRecoveryResult,
     Profile,
     ProfileUpdate,
+    PushSubscriptionCreate,
+    PushSubscriptionDelete,
     RecoveryCodeResult,
     RegistrationResult,
     RestoreRequest,
     RestoreResult,
 )
 from .services import calculate_insights, row_to_period, row_to_profile, utc_now
+from .notifications import (
+    get_vapid_public_key,
+    notifications_configured,
+    send_test_notification,
+)
 from .rate_limit import clear_rate_limit, enforce_rate_limit, record_failed_attempt
 
 
@@ -778,6 +789,151 @@ def insights(
         today or date.today(),
         profile.average_cycle_length if profile else 28,
         profile.average_period_length if profile else 5,
+    )
+
+
+def _notification_preferences(
+    connection: sqlite3.Connection, account_id: int
+) -> NotificationPreferences:
+    row = connection.execute(
+        """
+        SELECT enabled, period_reminder_days, pms_reminder_enabled,
+               reminder_time, timezone
+        FROM notification_preferences WHERE account_id = ?
+        """,
+        (account_id,),
+    ).fetchone()
+    if row is None:
+        return NotificationPreferences()
+    values = dict(row)
+    values["enabled"] = bool(values["enabled"])
+    values["pms_reminder_enabled"] = bool(values["pms_reminder_enabled"])
+    return NotificationPreferences(**values)
+
+
+@app.get(
+    "/api/notifications/config",
+    response_model=NotificationConfig,
+    dependencies=[Depends(require_user_account)],
+)
+def notification_config(
+    account: sqlite3.Row = Depends(require_user_account),
+    connection: sqlite3.Connection = Depends(get_connection),
+) -> NotificationConfig:
+    has_subscription = connection.execute(
+        "SELECT 1 FROM push_subscriptions WHERE account_id = ? LIMIT 1",
+        (account["id"],),
+    ).fetchone() is not None
+    return NotificationConfig(
+        available=notifications_configured(),
+        public_key=get_vapid_public_key(),
+        has_subscription=has_subscription,
+        preferences=_notification_preferences(connection, account["id"]),
+    )
+
+
+@app.put(
+    "/api/notifications/preferences",
+    response_model=NotificationPreferences,
+    dependencies=[Depends(require_user_account)],
+)
+def update_notification_preferences(
+    payload: NotificationPreferencesUpdate,
+    account: sqlite3.Row = Depends(require_user_account),
+    connection: sqlite3.Connection = Depends(get_connection),
+) -> NotificationPreferences:
+    connection.execute(
+        """
+        INSERT INTO notification_preferences (
+            account_id, enabled, period_reminder_days, pms_reminder_enabled,
+            reminder_time, timezone
+        ) VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(account_id) DO UPDATE SET
+            enabled = excluded.enabled,
+            period_reminder_days = excluded.period_reminder_days,
+            pms_reminder_enabled = excluded.pms_reminder_enabled,
+            reminder_time = excluded.reminder_time,
+            timezone = excluded.timezone,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (
+            account["id"],
+            int(payload.enabled),
+            payload.period_reminder_days,
+            int(payload.pms_reminder_enabled),
+            payload.reminder_time,
+            payload.timezone,
+        ),
+    )
+    connection.commit()
+    return _notification_preferences(connection, account["id"])
+
+
+@app.post(
+    "/api/notifications/subscriptions",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_user_account)],
+)
+def save_push_subscription(
+    payload: PushSubscriptionCreate,
+    account: sqlite3.Row = Depends(require_user_account),
+    connection: sqlite3.Connection = Depends(get_connection),
+) -> dict:
+    if not notifications_configured():
+        raise HTTPException(status_code=503, detail="Bildirim servisi hen\u00fcz yap\u0131land\u0131r\u0131lmad\u0131.")
+    connection.execute(
+        """
+        INSERT INTO push_subscriptions (account_id, endpoint, p256dh, auth)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(endpoint) DO UPDATE SET
+            account_id = excluded.account_id,
+            p256dh = excluded.p256dh,
+            auth = excluded.auth,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (account["id"], payload.endpoint, payload.keys.p256dh, payload.keys.auth),
+    )
+    connection.commit()
+    return {"status": "ok"}
+
+
+@app.post(
+    "/api/notifications/unsubscribe",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_user_account)],
+)
+def remove_push_subscription(
+    payload: PushSubscriptionDelete,
+    account: sqlite3.Row = Depends(require_user_account),
+    connection: sqlite3.Connection = Depends(get_connection),
+) -> Response:
+    connection.execute(
+        "DELETE FROM push_subscriptions WHERE account_id = ? AND endpoint = ?",
+        (account["id"], payload.endpoint),
+    )
+    connection.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.post(
+    "/api/notifications/test",
+    response_model=NotificationActionResult,
+    dependencies=[Depends(require_user_account)],
+)
+def test_push_notification(
+    account: sqlite3.Row = Depends(require_user_account),
+    connection: sqlite3.Connection = Depends(get_connection),
+) -> NotificationActionResult:
+    if not notifications_configured():
+        raise HTTPException(status_code=503, detail="Bildirim servisi hen\u00fcz yap\u0131land\u0131r\u0131lmad\u0131.")
+    summary = send_test_notification(connection, account["id"])
+    if summary.due_notifications == 0:
+        raise HTTPException(status_code=409, detail="Bu hesap i\u00e7in kay\u0131tl\u0131 cihaz bulunamad\u0131.")
+    if summary.sent_messages == 0:
+        raise HTTPException(status_code=502, detail="Test bildirimi g\u00f6nderilemedi.")
+    return NotificationActionResult(
+        delivered=summary.sent_messages,
+        failed=summary.failed_messages,
     )
 
 

@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
+  BellRing,
   CalendarDays,
   Check,
   Copy,
@@ -34,6 +35,8 @@ import type {
   BackupData,
   FlowLevel,
   Insights,
+  NotificationConfig,
+  NotificationPreferences,
   Period,
   PeriodPayload,
   PasswordChangePayload,
@@ -59,6 +62,13 @@ const todayIso = () => {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 };
+
+function urlBase64ToArrayBuffer(value: string): ArrayBuffer {
+  const padding = "=".repeat((4 - (value.length % 4)) % 4);
+  const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = window.atob(base64);
+  return Uint8Array.from([...raw].map((character) => character.charCodeAt(0))).buffer;
+}
 
 function eachDate(start: string, end: string): string[] {
   const dates: string[] = [];
@@ -538,6 +548,148 @@ function SettingsModal({
   const [restoreSaving, setRestoreSaving] = useState(false);
   const [restoreError, setRestoreError] = useState("");
   const [restoreSuccess, setRestoreSuccess] = useState("");
+  const [notificationConfig, setNotificationConfig] = useState<NotificationConfig | null>(null);
+  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>({
+    enabled: false,
+    period_reminder_days: 2,
+    pms_reminder_enabled: true,
+    reminder_time: "10:00",
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Istanbul"
+  });
+  const [deviceSubscribed, setDeviceSubscribed] = useState(false);
+  const [notificationSaving, setNotificationSaving] = useState(false);
+  const [notificationError, setNotificationError] = useState("");
+  const [notificationSuccess, setNotificationSuccess] = useState("");
+  const pushSupported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+
+  useEffect(() => {
+    let cancelled = false;
+    api.getNotificationConfig()
+      .then(async (config) => {
+        if (cancelled) return;
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || config.preferences.timezone;
+        setNotificationConfig(config);
+        setNotificationPreferences({ ...config.preferences, timezone });
+        if (pushSupported) {
+          const registration = await navigator.serviceWorker.ready;
+          const subscription = await registration.pushManager.getSubscription();
+          if (!cancelled) setDeviceSubscribed(Boolean(subscription));
+        }
+      })
+      .catch((caught) => {
+        if (!cancelled) {
+          setNotificationError(caught instanceof Error ? caught.message : "Bildirim ayarları yüklenemedi.");
+        }
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const enableNotifications = async () => {
+    setNotificationSaving(true);
+    setNotificationError("");
+    setNotificationSuccess("");
+    try {
+      if (!notificationConfig?.available) throw new Error("Bildirim servisi henüz hazır değil.");
+      if (!pushSupported) throw new Error("Bu cihaz veya tarayıcı Web Push bildirimlerini desteklemiyor.");
+      const permission = Notification.permission === "granted"
+        ? "granted"
+        : await Notification.requestPermission();
+      if (permission !== "granted") {
+        throw new Error("Bildirim izni verilmedi. iPhone Ayarlar → Bildirimler → Luna bölümünden izin verebilirsin.");
+      }
+
+      const registration = await navigator.serviceWorker.ready;
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToArrayBuffer(notificationConfig.public_key)
+        });
+      }
+      const serialized = subscription.toJSON();
+      if (!serialized.endpoint || !serialized.keys?.p256dh || !serialized.keys?.auth) {
+        throw new Error("Cihaz bildirim aboneliği tamamlanamadı.");
+      }
+      await api.savePushSubscription({
+        endpoint: serialized.endpoint,
+        keys: { p256dh: serialized.keys.p256dh, auth: serialized.keys.auth }
+      });
+      const saved = await api.updateNotificationPreferences({
+        ...notificationPreferences,
+        enabled: true,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || notificationPreferences.timezone
+      });
+      setNotificationPreferences(saved);
+      setNotificationConfig({ ...notificationConfig, has_subscription: true, preferences: saved });
+      setDeviceSubscribed(true);
+      const result = await api.testNotification();
+      setNotificationSuccess(`Bildirimler açıldı; ${result.delivered} cihaza test bildirimi gönderildi.`);
+    } catch (caught) {
+      setNotificationError(caught instanceof Error ? caught.message : "Bildirimler açılamadı.");
+    } finally {
+      setNotificationSaving(false);
+    }
+  };
+
+  const saveNotificationPreferences = async () => {
+    setNotificationSaving(true);
+    setNotificationError("");
+    setNotificationSuccess("");
+    try {
+      const saved = await api.updateNotificationPreferences({
+        ...notificationPreferences,
+        enabled: deviceSubscribed
+      });
+      setNotificationPreferences(saved);
+      if (notificationConfig) setNotificationConfig({ ...notificationConfig, preferences: saved });
+      setNotificationSuccess("Bildirim tercihlerin kaydedildi.");
+    } catch (caught) {
+      setNotificationError(caught instanceof Error ? caught.message : "Bildirim ayarları kaydedilemedi.");
+    } finally {
+      setNotificationSaving(false);
+    }
+  };
+
+  const sendTestNotification = async () => {
+    setNotificationSaving(true);
+    setNotificationError("");
+    setNotificationSuccess("");
+    try {
+      const result = await api.testNotification();
+      setNotificationSuccess(`${result.delivered} cihaza test bildirimi gönderildi.`);
+    } catch (caught) {
+      setNotificationError(caught instanceof Error ? caught.message : "Test bildirimi gönderilemedi.");
+    } finally {
+      setNotificationSaving(false);
+    }
+  };
+
+  const disableNotifications = async () => {
+    setNotificationSaving(true);
+    setNotificationError("");
+    setNotificationSuccess("");
+    try {
+      if (pushSupported) {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription) {
+          await api.removePushSubscription(subscription.endpoint);
+          await subscription.unsubscribe();
+        }
+      }
+      const saved = await api.updateNotificationPreferences({ ...notificationPreferences, enabled: false });
+      setNotificationPreferences(saved);
+      if (notificationConfig) {
+        setNotificationConfig({ ...notificationConfig, has_subscription: false, preferences: saved });
+      }
+      setDeviceSubscribed(false);
+      setNotificationSuccess("Bu cihazdaki bildirimler kapatıldı.");
+    } catch (caught) {
+      setNotificationError(caught instanceof Error ? caught.message : "Bildirimler kapatılamadı.");
+    } finally {
+      setNotificationSaving(false);
+    }
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -669,6 +821,81 @@ function SettingsModal({
             {saving ? <LoaderCircle className="spin" size={18} /> : <Check size={18} />} Ayarları kaydet
           </button>
         </form>
+        <div className="settings-divider" />
+        <div className="notification-section">
+          <span className="eyebrow">HATIRLATICILAR</span>
+          <h3><BellRing size={18} /> PMS ve yaklaşan regl bildirimleri</h3>
+          <p className="section-description">
+            Luna kapalıyken de telefonuna bildirim gelir. Kilit ekranında kesin tarih veya sağlık detayı gösterilmez.
+          </p>
+          {!notificationConfig ? (
+            <p className="settings-hint">Bildirim desteği kontrol ediliyor…</p>
+          ) : !notificationConfig.available ? (
+            <p className="settings-hint">Bildirim servisi sunucuda henüz yapılandırılmadı.</p>
+          ) : !pushSupported ? (
+            <p className="settings-hint">Bu tarayıcı Web Push desteklemiyor. iPhone'da Luna'yı ana ekran ikonundan açmalısın.</p>
+          ) : !deviceSubscribed ? (
+            <button type="button" className="primary-button full-width" onClick={enableNotifications} disabled={notificationSaving}>
+              {notificationSaving ? <LoaderCircle className="spin" size={18} /> : <BellRing size={17} />} Bu cihazda bildirimleri aç
+            </button>
+          ) : (
+            <>
+              <div className="notification-grid">
+                <label>
+                  Regl hatırlatması
+                  <div className="number-input">
+                    <input
+                      type="number"
+                      min={0}
+                      max={7}
+                      value={notificationPreferences.period_reminder_days}
+                      onChange={(event) => setNotificationPreferences({
+                        ...notificationPreferences,
+                        period_reminder_days: Number(event.target.value)
+                      })}
+                    />
+                    <span>gün önce</span>
+                  </div>
+                </label>
+                <label>
+                  Bildirim saati
+                  <input
+                    type="time"
+                    value={notificationPreferences.reminder_time}
+                    onChange={(event) => setNotificationPreferences({
+                      ...notificationPreferences,
+                      reminder_time: event.target.value
+                    })}
+                  />
+                </label>
+              </div>
+              <label className="notification-toggle">
+                <input
+                  type="checkbox"
+                  checked={notificationPreferences.pms_reminder_enabled}
+                  onChange={(event) => setNotificationPreferences({
+                    ...notificationPreferences,
+                    pms_reminder_enabled: event.target.checked
+                  })}
+                />
+                <span><strong>PMS başlangıcını hatırlat</strong><small>Tahmini PMS penceresinin ilk gününde bildirim gönderir.</small></span>
+              </label>
+              <div className="notification-actions">
+                <button type="button" className="primary-button" onClick={saveNotificationPreferences} disabled={notificationSaving}>
+                  <Check size={16} /> Tercihleri kaydet
+                </button>
+                <button type="button" className="secondary-button" onClick={sendTestNotification} disabled={notificationSaving}>
+                  <BellRing size={16} /> Test gönder
+                </button>
+              </div>
+              <button type="button" className="text-button notification-disable" onClick={disableNotifications} disabled={notificationSaving}>
+                Bu cihazdaki bildirimleri kapat
+              </button>
+            </>
+          )}
+          {notificationError && <p className="form-error">{notificationError}</p>}
+          {notificationSuccess && <p className="form-success">{notificationSuccess}</p>}
+        </div>
         <div className="settings-divider" />
         <div className="data-section">
           <span className="eyebrow">VERİ YÖNETİMİ</span>

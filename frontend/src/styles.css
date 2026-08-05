@@ -146,8 +146,18 @@ main { max-width: 1180px; margin: 0 auto; padding: 50px 28px 72px; }
 .settings-modal { width: min(500px, 100%); }
 .settings-hint { margin: -2px 0 15px; padding: 11px 12px; color: var(--muted); border-radius: 10px; background: #f8f4f2; font-size: 9px; line-height: 1.5; }
 .settings-divider { height: 1px; margin: 25px 0; background: var(--line); }
-.security-section h3, .data-section h3 { margin: 5px 0 10px; font-size: 16px; }
+.security-section h3, .data-section h3, .notification-section h3 { margin: 5px 0 10px; font-size: 16px; }
+.notification-section h3 { display: flex; align-items: center; gap: 7px; }
 .section-description { margin: 0 0 14px; color: var(--muted); font-size: 9px; line-height: 1.6; }
+.notification-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.notification-toggle { flex-direction: row; align-items: flex-start; gap: 10px; margin: 2px 0 15px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #faf7f5; cursor: pointer; }
+.notification-toggle input { width: 17px; height: 17px; flex: 0 0 17px; margin: 1px 0 0; accent-color: var(--rose); }
+.notification-toggle span { display: flex; flex-direction: column; gap: 3px; }
+.notification-toggle strong { font-size: 10px; }
+.notification-toggle small { color: var(--muted); font-size: 8px; font-weight: 400; line-height: 1.45; }
+.notification-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.notification-actions button { min-width: 0; padding-inline: 10px; font-size: 10px; }
+.notification-disable { margin: 12px auto 0; color: var(--muted); }
 .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
 .backup-file-picker { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 8px; min-height: 43px; margin: 0 0 12px; padding: 10px 12px; border: 1px dashed #c99da7; border-radius: 11px; color: var(--rose-dark); background: #fbf1f1; cursor: pointer; font-size: 10px; }
 .backup-file-picker:hover { border-color: var(--rose); background: #f9e9eb; }
@@ -223,6 +233,7 @@ textarea { resize: vertical; }
   .calendar-card, .history-card { padding: 18px 14px; }.calendar-day { width: 33px; height: 33px; }.calendar-legend { gap: 11px; flex-wrap: wrap; }
   .modal-backdrop { align-items: end; padding: 0; }.modal { max-height: 92vh; padding: 22px 18px calc(22px + env(safe-area-inset-bottom)); border-radius: 24px 24px 0 0; }.form-row { grid-template-columns: 1fr; gap: 0; }
   .onboarding-intro h1 { font-size: 37px; letter-spacing: -1.5px; }.onboarding-intro > p { font-size: 13px; }.privacy-note { text-align: left; }.onboarding-form { padding: 24px 18px; }.onboarding-number-grid, .auth-credentials-grid { grid-template-columns: 1fr; gap: 0; }
+  .notification-grid, .notification-actions { grid-template-columns: 1fr; gap: 0; }.notification-actions { gap: 8px; }.notification-actions .secondary-button { margin: 0; }
   .admin-heading, .admin-row { align-items: stretch; flex-direction: column; }.admin-row button { width: 100%; }.admin-card { padding: 19px 16px; }
 }
 

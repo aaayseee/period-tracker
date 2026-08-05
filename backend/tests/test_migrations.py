@@ -35,14 +35,17 @@ def test_fresh_database_applies_all_migrations_idempotently(tmp_path):
             "invite_codes",
             "auth_rate_limit_events",
             "admin_audit_logs",
+            "notification_preferences",
+            "push_subscriptions",
+            "notification_deliveries",
         }.issubset(table_names(connection))
         assert [
             row["version"]
             for row in connection.execute(
                 "SELECT version FROM schema_migrations ORDER BY version"
             ).fetchall()
-        ] == [1, 2, 3, 4, 5]
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 5
+        ] == [1, 2, 3, 4, 5, 6]
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 6
         assert "recovery_code_hash" in {
             row["name"]
             for row in connection.execute("PRAGMA table_info(accounts)").fetchall()
@@ -98,7 +101,7 @@ def test_existing_database_is_baselined_and_preserves_data(tmp_path):
         }
         assert connection.execute(
             "SELECT COUNT(*) FROM schema_migrations"
-        ).fetchone()[0] == 5
+        ).fetchone()[0] == 6
         assert connection.execute(
             "SELECT role FROM accounts WHERE id = 1"
         ).fetchone()[0] == "user"
@@ -114,7 +117,7 @@ def test_failed_migration_rolls_back_schema_and_version(tmp_path):
 
     migrations = (
         *MIGRATIONS,
-        Migration(version=6, name="failing_test_migration", upgrade=failing_upgrade),
+        Migration(version=7, name="failing_test_migration", upgrade=failing_upgrade),
     )
 
     with connect(database_path) as connection:
@@ -124,9 +127,9 @@ def test_failed_migration_rolls_back_schema_and_version(tmp_path):
     with connect(database_path) as connection:
         assert "should_be_rolled_back" not in table_names(connection)
         assert connection.execute(
-            "SELECT COUNT(*) FROM schema_migrations WHERE version = 6"
+            "SELECT COUNT(*) FROM schema_migrations WHERE version = 7"
         ).fetchone()[0] == 0
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 5
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 6
 
 
 def test_incompatible_legacy_schema_is_not_baselined(tmp_path):

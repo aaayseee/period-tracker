@@ -68,13 +68,14 @@ Değerlendirme: 3. aşama çalışır durumdadır. UI component testleri ve eri�
 | Web App Manifest | Tamamlandı | Ad, kısa ad, tema, standalone, dil ve ikon |
 | Service Worker | MVP tamamlandı | Uygulama kabuğunda network-first cache |
 | İkon ve uygulama adı | Tamamlandı | SVG kaynak, PNG 192/512, maskable 512 ve Apple touch 180 ikonları |
-| Telefona kurulum | Kısmi | HTTPS altyapısı hazır; gerçek domain yayını ve fiziksel telefon testi bekliyor |
+| Telefona kurulum | Tamamlandı | Tailscale Funnel HTTPS adresi iPhone ana ekranına Web App olarak kuruldu ve gerçek cihazda çalıştığı doğrulandı |
 | Çevrimdışı arayüz | Tamamlandı | Service Worker tarafından önbelleğe alınan özel çevrimdışı hata ekranı |
 | Çevrimdışı veri okuma/yazma | Planlandı | API cache, IndexedDB queue ve sync yok |
 | Lighthouse/installability doğrulaması | Planlandı | Gerçek HTTPS ortamında yapılmalı |
 | Docker ile kurulum | Tamamlandı | Multi-stage frontend, non-root backend, Nginx reverse proxy, healthcheck ve kalıcı named volume |
 | HTTPS deployment | Kısmi | Caddy production katmanı, Secure cookie/CORS ve yerel TLS testi tamam; gerçek domain/VPS yayını için dış altyapı bilgileri gerekli |
 | Otomatik şifreli yedek | Tamamlandı | Online SQLite snapshot, AES-256-GCM, günlük profil, retention, healthcheck ve kontrollü restore testleri |
+| PMS/regl Web Push bildirimleri | Kısmi | VAPID, kullanıcı tercihleri, cihaz aboneliği, scheduler, hassas olmayan kilit ekranı metni ve testler tamam; fiziksel telefon izin/test bildirimi bekliyor |
 
 Değerlendirme: Manifest ve Service Worker doğru temel parçaları sağlar; “tam offline-first ve production-ready PWA” aşaması henüz tamamlanmış sayılmaz.
 

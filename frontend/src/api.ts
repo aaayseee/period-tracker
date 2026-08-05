@@ -9,6 +9,9 @@ import type {
   AuthSession,
   BackupData,
   Insights,
+  NotificationActionResult,
+  NotificationConfig,
+  NotificationPreferences,
   Period,
   PeriodPayload,
   PasswordChangePayload,
@@ -16,6 +19,7 @@ import type {
   PasswordRecoveryResult,
   Profile,
   ProfileUpdatePayload,
+  PushSubscriptionPayload,
   RecoveryCodeResult,
   RegistrationResult,
   RestorePayload,
@@ -110,6 +114,24 @@ export const api = {
     }),
   getPeriods: () => request<Period[]>("/api/periods"),
   getInsights: () => request<Insights>("/api/insights"),
+  getNotificationConfig: () => request<NotificationConfig>("/api/notifications/config"),
+  updateNotificationPreferences: (payload: NotificationPreferences) =>
+    request<NotificationPreferences>("/api/notifications/preferences", {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    }),
+  savePushSubscription: (payload: PushSubscriptionPayload) =>
+    request<{ status: string }>("/api/notifications/subscriptions", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
+  removePushSubscription: (endpoint: string) =>
+    request<void>("/api/notifications/unsubscribe", {
+      method: "POST",
+      body: JSON.stringify({ endpoint })
+    }),
+  testNotification: () =>
+    request<NotificationActionResult>("/api/notifications/test", { method: "POST" }),
   createPeriod: (payload: PeriodPayload) =>
     request<Period>("/api/periods", { method: "POST", body: JSON.stringify(payload) }),
   updatePeriod: (id: number, payload: PeriodPayload) =>

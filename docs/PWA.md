@@ -110,6 +110,12 @@ Domain, DNS, Caddy ve production Compose adımları için [HTTPS deployment rehb
 - Gerçek domain/VPS üzerinde HTTPS ve telefon kurulum doğrulaması
 - İstenirse şifreli IndexedDB + offline mutation queue + çatışma çözümü
 
+## Web Push bildirimleri
+
+Service Worker `push` ve `notificationclick` olaylarını işler. Kullanıcı bildirimleri yalnız **Ayarlar → Hatırlatıcılar** alanındaki düğmeye doğrudan bastığında etkinleştirilebilir. iPhone/iPad'de Luna ana ekrana kurulmuş web uygulaması olarak açılmalıdır.
+
+VAPID anahtarları, Docker scheduler, API'ler, gizlilik yaklaşımı ve sorun giderme için [Web Push bildirimleri rehberine](NOTIFICATIONS.md) bak.
+
 ## Tam offline-first tasarım önerisi
 
 Offline kayıt gerçekten istenirse:

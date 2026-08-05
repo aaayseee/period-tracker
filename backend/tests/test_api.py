@@ -611,3 +611,40 @@ def test_admin_audit_rejects_non_allow_listed_sensitive_fields(tmp_path):
         assert connection.execute(
             "SELECT COUNT(id) FROM admin_audit_logs"
         ).fetchone()[0] == 0
+
+
+def test_user_can_manage_notification_preferences_and_subscription(tmp_path, monkeypatch):
+    monkeypatch.setenv("PERIOD_TRACKER_VAPID_PUBLIC_KEY", "B" * 87)
+    monkeypatch.setenv("PERIOD_TRACKER_VAPID_PRIVATE_KEY", "private-key")
+    monkeypatch.setenv("PERIOD_TRACKER_VAPID_SUBJECT", "mailto:test@example.com")
+    with build_client(tmp_path) as client:
+        assert register(client).status_code == 200
+        config = client.get("/api/notifications/config")
+        assert config.status_code == 200
+        assert config.json()["available"] is True
+        assert config.json()["has_subscription"] is False
+
+        preferences = {
+            "enabled": True,
+            "period_reminder_days": 3,
+            "pms_reminder_enabled": True,
+            "reminder_time": "09:30",
+            "timezone": "Europe/Istanbul",
+        }
+        saved = client.put("/api/notifications/preferences", json=preferences)
+        assert saved.status_code == 200
+        assert saved.json() == preferences
+
+        subscription = {
+            "endpoint": "https://push.example/subscription-123456",
+            "keys": {"p256dh": "A" * 65, "auth": "B" * 22},
+        }
+        assert client.post(
+            "/api/notifications/subscriptions", json=subscription
+        ).status_code == 201
+        assert client.get("/api/notifications/config").json()["has_subscription"] is True
+        assert client.post(
+            "/api/notifications/unsubscribe",
+            json={"endpoint": subscription["endpoint"]},
+        ).status_code == 204
+        assert client.get("/api/notifications/config").json()["has_subscription"] is False

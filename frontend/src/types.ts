@@ -154,3 +154,31 @@ export interface Insights {
   confidence: "low" | "medium" | "high";
   is_estimate: boolean;
 }
+
+export interface NotificationPreferences {
+  enabled: boolean;
+  period_reminder_days: number;
+  pms_reminder_enabled: boolean;
+  reminder_time: string;
+  timezone: string;
+}
+
+export interface NotificationConfig {
+  available: boolean;
+  public_key: string;
+  has_subscription: boolean;
+  preferences: NotificationPreferences;
+}
+
+export interface PushSubscriptionPayload {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+}
+
+export interface NotificationActionResult {
+  delivered: number;
+  failed: number;
+}

@@ -30,6 +30,7 @@ Uygulama yerel kullanım için çalışan bir MVP'dir:
 - Caddy ile otomatik sertifika yenilemeli HTTPS deployment altyapısı
 - Responsive React arayüzü
 - Manifest, ikon ve Service Worker içeren PWA kabuğu
+- Kullanıcı izinli Web Push, PMS ve yaklaşan regl hatırlatmaları
 
 Üretim ortamına internet üzerinden açılmadan önce yapılması gerekenler [Yol Haritası](docs/ROADMAP.md) belgesinde açıkça listelenmiştir.
 
@@ -48,6 +49,7 @@ Uygulama yerel kullanım için çalışan bir MVP'dir:
 | HTTPS edge | Caddy 2 | TLS sertifikası, HTTP yönlendirmesi ve güvenlik header'ları |
 | Test | Pytest + FastAPI TestClient | API, auth ve tahmin algoritması testleri |
 | PWA | Web App Manifest + Service Worker | Kurulabilir uygulama kabuğu |
+| Bildirim | Web Push + VAPID + pywebpush | Hesap/cihaz bazlı PMS ve regl hatırlatmaları |
 
 ## Gereksinimler
 
@@ -106,6 +108,8 @@ docker compose --env-file .env.production --env-file .env.backup --profile backu
 ```
 
 Domain DNS kayıtları ile sunucu/VPS hazırlığı dahil tam süreç: [HTTPS deployment](docs/DEPLOYMENT.md).
+
+Domain veya VPS satın almadan gerçek telefonda beta testi için [Tailscale Funnel rehberini](docs/TAILSCALE_FUNNEL.md) kullan. Bildirim anahtarları, scheduler ve telefon izin akışı [Web Push bildirimleri](docs/NOTIFICATIONS.md) belgesindedir.
 
 ## İlk kurulum
 
@@ -356,6 +360,8 @@ netstat -ano | Select-String ":8000|:5173"
 - [Veritabanı migration sistemi](docs/MIGRATIONS.md)
 - [Docker kurulumu](docs/DOCKER.md)
 - [HTTPS deployment](docs/DEPLOYMENT.md)
+- [Tailscale Funnel ile ücretsiz beta paylaşımı](docs/TAILSCALE_FUNNEL.md)
+- [Web Push bildirimleri](docs/NOTIFICATIONS.md)
 - [Aşama denetimi ve yol haritası](docs/ROADMAP.md)
 
 ## Lisans ve kullanım

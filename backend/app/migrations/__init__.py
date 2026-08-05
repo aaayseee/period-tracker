@@ -9,6 +9,7 @@ from .versions import (
     v0003_multi_user,
     v0004_auth_rate_limits,
     v0005_admin_audit_logs,
+    v0006_web_push_notifications,
 )
 
 
@@ -51,6 +52,11 @@ MIGRATIONS: tuple[Migration, ...] = (
         v0005_admin_audit_logs.VERSION,
         v0005_admin_audit_logs.NAME,
         v0005_admin_audit_logs.upgrade,
+    ),
+    Migration(
+        v0006_web_push_notifications.VERSION,
+        v0006_web_push_notifications.NAME,
+        v0006_web_push_notifications.upgrade,
     ),
 )
 

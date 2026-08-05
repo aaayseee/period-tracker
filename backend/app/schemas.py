@@ -1,7 +1,8 @@
 from datetime import date, datetime, timezone
 from typing import Annotated, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, BeforeValidator, Field, model_validator
+from pydantic import BaseModel, BeforeValidator, Field, field_validator, model_validator
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 FlowLevel = Literal["light", "medium", "heavy"]
@@ -178,6 +179,53 @@ class Insights(BaseModel):
     completed_cycles: int
     confidence: Literal["low", "medium", "high"]
     is_estimate: bool
+
+
+class NotificationPreferencesUpdate(BaseModel):
+    enabled: bool = False
+    period_reminder_days: int = Field(default=2, ge=0, le=7)
+    pms_reminder_enabled: bool = True
+    reminder_time: str = Field(default="10:00", pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+    timezone: str = Field(default="Europe/Istanbul", min_length=1, max_length=64)
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, value: str) -> str:
+        try:
+            ZoneInfo(value)
+        except ZoneInfoNotFoundError as exc:
+            raise ValueError("Ge\u00e7erli bir IANA saat dilimi se\u00e7ilmelidir.") from exc
+        return value
+
+
+class NotificationPreferences(NotificationPreferencesUpdate):
+    pass
+
+
+class NotificationConfig(BaseModel):
+    available: bool
+    public_key: str
+    has_subscription: bool
+    preferences: NotificationPreferences
+
+
+class PushSubscriptionKeys(BaseModel):
+    p256dh: str = Field(min_length=20, max_length=512, pattern=r"^[A-Za-z0-9_-]+={0,2}$")
+    auth: str = Field(min_length=8, max_length=256, pattern=r"^[A-Za-z0-9_-]+={0,2}$")
+
+
+class PushSubscriptionCreate(BaseModel):
+    endpoint: str = Field(min_length=20, max_length=2048, pattern=r"^https://")
+    keys: PushSubscriptionKeys
+
+
+class PushSubscriptionDelete(BaseModel):
+    endpoint: str = Field(min_length=20, max_length=2048, pattern=r"^https://")
+
+
+class NotificationActionResult(BaseModel):
+    delivered: int
+    failed: int = 0
 
 
 class ExportData(BaseModel):

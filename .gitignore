@@ -8,6 +8,7 @@ frontend/dist/
 .env
 .env.production
 .env.backup
+.env.notifications
 .env.*.local
 backups/
 *.luna-backup

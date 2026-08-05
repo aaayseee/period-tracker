@@ -294,6 +294,40 @@ Başarılı yanıt:
 
 Dosyadaki kayıt kimlikleri dikkate alınmaz; veritabanı yeni yerel kimlikler üretir. Hesap, parola, kurtarma kodu ve session tablolarına yazılmaz. Tüm işlem tek SQLite transaction'ında gerçekleşir.
 
+## Bildirimler
+
+Tüm bildirim uçları geçerli `user` oturumu gerektirir.
+
+### `GET /api/notifications/config`
+
+Sunucunun VAPID durumunu, açık anahtarı, hesap tercihlerini ve en az bir kayıtlı abonelik olup olmadığını döndürür.
+
+### `PUT /api/notifications/preferences`
+
+```json
+{
+  "enabled": true,
+  "period_reminder_days": 2,
+  "pms_reminder_enabled": true,
+  "reminder_time": "10:00",
+  "timezone": "Europe/Istanbul"
+}
+```
+
+Saat dilimi geçerli bir IANA adı olmalı; hatırlatma günü 0–7 aralığındadır.
+
+### `POST /api/notifications/subscriptions`
+
+Tarayıcının standart `PushSubscription.toJSON()` çıktısındaki HTTPS endpoint, `p256dh` ve `auth` anahtarlarını hesapla ilişkilendirir.
+
+### `POST /api/notifications/unsubscribe`
+
+Yalnız oturum sahibine ve belirtilen endpoint'e ait cihaz aboneliğini kaldırır.
+
+### `POST /api/notifications/test`
+
+Kayıtlı cihazlara hassas sağlık ayrıntısı içermeyen anlık test bildirimi gönderir.
+
 ## Sağlık kontrolü
 
 ### `GET /health`
