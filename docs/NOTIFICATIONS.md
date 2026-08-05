@@ -31,13 +31,28 @@ Scheduler her kullanıcının IANA saat dilimini ve seçtiği yerel saati kullan
 
 ## VAPID anahtarlarını oluşturma
 
-Anahtarlar bir kurulumda yalnızca bir kez üretilmelidir:
+Anahtarlar bir kurulumda yalnızca bir kez üretilmelidir. `mailto:` adresi Luna giriş hesabı olmak zorunda değildir; push sağlayıcılarının gerektiğinde kurulum sahibiyle iletişim kurabilmesi için erişebildiğin gerçek bir adres kullanılması önerilir.
+
+Windows PowerShell:
 
 ```powershell
 cd backend
 .\.venv\Scripts\python.exe -m app.notification_cli init-env `
   --output ..\.env.notifications `
-  --subject mailto:GERCEK-ILETISIM-ADRESIN
+  --subject mailto:sen@example.com
+cd ..
+```
+
+Linux/macOS veya production VPS:
+
+```bash
+cd backend
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m app.notification_cli init-env \
+  --output ../.env.notifications \
+  --subject mailto:sen@example.com
 cd ..
 ```
 
@@ -89,6 +104,10 @@ docker compose --profile notifications exec notifications `
 
 iPhone/iPad Web Push için iOS/iPadOS 16.4 veya üzeri ve ana ekrana kurulmuş web uygulaması gerekir. İzin isteği yalnız kullanıcının doğrudan düğmeye basmasıyla gösterilebilir. Apple Developer hesabı gerekmez.
 
+Aynı hesap birden fazla telefonda kullanılabilir. Bildirim izni ve `push_subscriptions` satırı cihaz bazındadır; bir cihazdaki **Bu cihazdaki bildirimleri kapat** işlemi diğer cihaz aboneliklerini silmez. Hatırlatma saati, PMS seçimi ve kaç gün önce uyarılacağı hesap genelindedir.
+
+iPhone ana ekran PWA kurulumu, izin akışı ve gerçek test bildirimi Tailscale Funnel HTTPS adresinde başarıyla doğrulandı. Android Chrome aynı standart Web Push akışını kullanır; uygulama kurulup her Android cihazda izin ayrıca verilmelidir. Android için fiziksel cihaz testi ayrıca önerilir.
+
 ## API
 
 Tüm uçlar yalnız `user` rolündeki oturumlara açıktır:
@@ -99,7 +118,7 @@ Tüm uçlar yalnız `user` rolündeki oturumlara açıktır:
 - `POST /api/notifications/unsubscribe`
 - `POST /api/notifications/test`
 
-Abonelik endpoint'i ve şifreleme anahtarları hesap bazında saklanır. Admin paneli bildirim aboneliklerini veya sağlık verilerini göstermez.
+Cihaz endpoint'i ile `p256dh`/`auth` abonelik anahtarları hesapla ilişkilendirilerek SQLite'ta saklanır. Kurulum geneli VAPID özel anahtarı yalnız `.env.notifications` dosyasındadır; veritabanına yazılmaz ve admin panelinde gösterilmez. Admin paneli cihaz aboneliklerini veya sağlık verilerini göstermez.
 
 ## Sorun giderme
 
@@ -107,6 +126,7 @@ Abonelik endpoint'i ve şifreleme anahtarları hesap bazında saklanır. Admin p
 
 - Uygulamayı `https://...` adresinden aç.
 - iPhone'da Luna'yı ana ekrana eklediğini ve ikonundan açtığını doğrula.
+- Uygulamayı ana ekrandan silip yeniden kurduysan bu cihazda bildirimleri tekrar etkinleştir.
 - PWA'yı tamamen kapatıp yeniden açarak güncel Service Worker'ın yüklenmesini sağla.
 
 ### İzin daha önce reddedildi

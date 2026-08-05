@@ -75,6 +75,17 @@ Public endpoint'ler:
 
 SQL sorguları placeholder parametreleri kullanır; kullanıcı girdisi SQL metnine birleştirilmez.
 
+## Web Push güvenliği ve gizliliği
+
+Bildirim tercihleri ve cihaz abonelik endpoint'leri yalnız geçerli `user` oturumuyla çalışır ve `account_id` ile filtrelenir. `push_subscriptions` tablosundaki endpoint, `p256dh` ve `auth` değerleri sağlık kaydı değildir fakat cihaza ait hassas teknik metadata kabul edilir; admin API/paneli bunları göstermez.
+
+- Standart Web Push payload'ı cihaz abonelik anahtarlarıyla şifrelenir.
+- Kilit ekranı metni kesin regl/PMS tarihi, semptom, not veya hesap e-postası içermez.
+- Push sağlayıcısı teslim endpoint'i, zamanlama ve trafik metadata'sını işleyebilir; bu nedenle bildirimin kendisi minimum bilgi taşır.
+- VAPID özel anahtarı veritabanına yazılmaz; Git tarafından yok sayılan `.env.notifications` dosyasında tutulur.
+- VAPID özel anahtarı sızarsa yeni anahtar çifti üretilmeli ve tüm cihazlarda bildirim aboneliği yeniden açılmalıdır.
+- Bildirim izni cihaz bazındadır; hatırlatma tercihleri hesap genelindedir.
+
 ## Mevcut tehdit modeli
 
 Mevcut sürüm şu ortamı hedefler:
@@ -117,6 +128,7 @@ Limit olayları SQLite'ta tutulduğu için backend yeniden başladığında kayb
 - Düzenli AES-256-GCM yedek servisi ve kontrollü restore CLI'ı mevcut; production'da off-site kopyayı ve periyodik gerçek restore tatbikatını işlet
 - Uygulama loglarına sağlık verisi, parola veya cookie yazma
 - Dependency ve güvenlik taramalarını CI'a ekle
+- `.env.notifications` VAPID özel anahtarını parola yöneticisinde/şifreli yedekte ayrıca koru ve cihaz yeniden abonelik gerektiren bir rotasyon prosedürü belirle
 - Secret'ları repository'ye koyma
 
 ## Kayıp parola

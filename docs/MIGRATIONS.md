@@ -13,7 +13,8 @@ backend/app/migrations/
     ├── v0002_recovery_code.py  # recovery_code_hash sütunu
     ├── v0003_multi_user.py     # hesap sahipliği, roller ve davetler
     ├── v0004_auth_rate_limits.py # kalıcı auth rate limit olayları
-    └── v0005_admin_audit_logs.py # güvenli yönetim hareketleri
+    ├── v0005_admin_audit_logs.py # güvenli yönetim hareketleri
+    └── v0006_web_push_notifications.py # bildirim tabloları
 ```
 
 Uygulanan migration'lar SQLite içindeki `schema_migrations` tablosuna kaydedilir:
@@ -57,7 +58,8 @@ Database: C:\...\backend\data\period_tracker.db
 [x] 0003 multi_user_accounts_and_invites (2026-08-03 14:31:00)
 [x] 0004 auth_rate_limit_events (2026-08-04 10:00:00)
 [x] 0005 admin_audit_logs (2026-08-04 11:00:00)
-Latest version: 0005
+[x] 0006 web_push_notifications (2026-08-05 12:00:00)
+Latest version: 0006
 ```
 
 Bekleyen migration'ları manuel uygulamak için:
@@ -70,13 +72,13 @@ Bekleyen migration'ları manuel uygulamak için:
 
 ## Yeni migration ekleme
 
-Örnek olarak altıncı migration:
+Örnek olarak yedinci migration:
 
 ```python
-# backend/app/migrations/versions/v0006_example.py
+# backend/app/migrations/versions/v0007_example.py
 import sqlite3
 
-VERSION = 6
+VERSION = 7
 NAME = "add_example_column"
 
 
@@ -104,8 +106,9 @@ Migration sistemi eklenmeden önce oluşturulan Luna veritabanlarında `schema_m
 - `0003`, singleton hesabı `user` rolünde korur; profil ve tüm regl kayıtlarını aynı hesabın `account_id` değeriyle ilişkilendirir, ardından admin/davet desteğini ekler.
 - `0004`, düz e-posta veya IP saklamayan kalıcı auth rate limit olay tablosunu ve indekslerini ekler.
 - `0005`, sağlık verisi içermeyen admin audit tablosunu ve sorgu indekslerini ekler.
+- `0006`, hesap bazlı bildirim tercihlerini, cihaz Web Push aboneliklerini ve yinelenen gönderimi engelleyen teslim kayıtlarını ekler.
 - Hesap kimliği, profil, session ve regl kayıt içerikleri silinmez.
-- Beş migration başarıyla geçmişe kaydedilir.
+- Altı migration başarıyla geçmişe kaydedilir.
 
 Bu geçiş otomatik testte gerçek bir legacy şema ve örnek hesap verisiyle doğrulanır.
 

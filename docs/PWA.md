@@ -2,14 +2,17 @@
 
 ## Mevcut PWA bileşenleri
 
-Luna aşağıdaki temel PWA parçalarına sahiptir:
+Luna aşağıdaki PWA parçalarına sahiptir:
 
 - `frontend/public/manifest.webmanifest`
 - `frontend/public/sw.js`
+- `frontend/public/offline.html`, `offline.css` ve `offline.js`
 - `frontend/public/luna-icon.svg`
+- 192×192, 512×512, maskable 512×512 ve opak 180×180 Apple touch PNG ikonları
 - HTML içinde manifest, theme color ve Apple touch icon bağlantıları
-- Production modunda Service Worker kaydı
+- Production derlemesinde Service Worker kaydı
 - Mobil uyumlu ve standalone görünümü destekleyen arayüz
+- Web Push için `push` ve `notificationclick` olayları
 
 ## Manifest ayarları
 
@@ -19,43 +22,61 @@ Luna aşağıdaki temel PWA parçalarına sahiptir:
 | Kısa ad | Luna |
 | Başlangıç yolu | `/` |
 | Görünüm | `standalone` |
+| Arka plan | `#fcf9f7` |
 | Tema | `#a34c61` |
 | Dil | `tr` |
-| İkon | SVG kaynak, PNG 192/512, maskable 512 ve Apple touch 180 |
+| İkonlar | PNG 192/512 `any`, PNG 512 `maskable`, Apple touch 180 |
+
+İkon URL'lerinde sürüm sorgusu kullanılır. Bunun amacı iOS ve PWA önbelleğinin eski, hatalı şeffaf ikonları yeniden kullanmasını önlemektir. iOS mevcut ana ekran ikonunu her zaman otomatik yenilemez; ikon değişikliğinde Luna'yı ana ekrandan silip Safari üzerinden yeniden eklemek gerekebilir.
 
 ## Service Worker stratejisi
 
-Uygulama kabuğu için ağ-öncelikli yaklaşım kullanılır:
+Güncel cache adı `luna-shell-v4` değeridir. Strateji istek türüne göre ayrılır:
 
-1. Tarayıcı kaynağı ağdan ister.
-2. Başarılı yanıt cache'e yazılır.
-3. Ağ başarısızsa cache yanıtı kullanılır.
-4. Navigation için son çare olarak cache'teki `/` döndürülür.
+### Önceden cache'lenen dosyalar
 
-İlk kurulumda şu dosyalar önbelleğe alınır:
+Service Worker kurulurken şunlar cache'e alınır:
 
-- `/`
+- `/offline.html`, `/offline.css`, `/offline.js`
 - `/manifest.webmanifest`
 - `/luna-icon.svg`
+- Sürümlü PNG uygulama ikonları ve Apple touch icon
 
-Vite'ın oluşturduğu JS/CSS dosyaları ilk başarılı isteklerinden sonra cache'e girer.
+### Sayfa gezinmeleri
 
-## Bilinçli çevrimdışı sınırı
+Navigation isteklerinde ağ önceliklidir:
 
-`/api/` istekleri Service Worker tarafından yakalanmaz. Bunun nedeni eski veya hassas sağlık verilerinin kontrolsüz biçimde Cache Storage'a yazılmasını önlemektir.
+1. Sayfa ağdan istenir.
+2. Ağ erişilemezse `/offline.html` gösterilir.
+
+Ana uygulama HTML'i çevrimdışı veri kullanımı için cache'lenmez. Bu nedenle bağlantı yokken eski sağlık verileri yerine açık bir çevrimdışı hata ekranı gösterilir.
+
+### Statik dosyalar
+
+Navigation ve `/api` dışındaki GET isteklerinde cache önceliklidir:
+
+1. Eşleşen cache yanıtı varsa kullanılır.
+2. Yoksa kaynak ağdan alınır.
+3. Başarılı yanıt runtime cache'e yazılır.
+
+Aktivasyon sırasında `luna-shell-v4` dışındaki eski Luna cache'leri temizlenir.
+
+### API istekleri
+
+`/api/` istekleri Service Worker tarafından yakalanmaz. Böylece eski veya hassas sağlık verileri kontrolsüz biçimde Cache Storage'a yazılmaz.
 
 Sonuç:
 
-- Daha önce yüklenen uygulama arayüzü çevrimdışı açılabilir.
-- Backend'e erişim yoksa hesap, takvim ve tahmin verileri yüklenemez.
-- Çevrimdışıyken yeni kayıt eklenemez.
+- Bağlantı yokken özel çevrimdışı ekranı açılır.
+- Backend'e erişim yoksa hesap, takvim ve tahmin verileri yüklenmez.
+- Çevrimdışıyken kayıt ekleme, düzenleme veya silme yapılamaz.
 - Çevrimdışı yazma kuyruğu ve sonradan senkronizasyon yoktur.
 
-Bu nedenle mevcut sürüm “kurulabilir PWA”dır; “tamamen offline-first uygulama” değildir.
+Mevcut sürüm kurulabilir bir PWA'dır; tam offline-first uygulama değildir.
 
 ## Yerel geliştirmede test
 
-Service Worker yalnızca production derlemesinde kaydedilir. Test için:
+Service Worker yalnız production derlemesinde kaydedilir. Test için:
 
 ```powershell
 cd frontend
@@ -65,10 +86,11 @@ npm.cmd run preview
 
 Tarayıcı geliştirici araçlarında:
 
-1. Application → Manifest bölümünü kontrol et.
+1. Application → Manifest bölümünde ikonları ve `standalone` görünümü kontrol et.
 2. Application → Service Workers bölümünde worker'ın aktif olduğunu doğrula.
-3. Cache Storage altında `luna-shell-v1` cache'ini kontrol et.
-4. Network'ü Offline yapıp uygulama kabuğunun açıldığını doğrula.
+3. Cache Storage altında `luna-shell-v4` cache'ini kontrol et.
+4. Network'ü Offline yapıp `/offline.html` ekranının açıldığını doğrula.
+5. Network'ü tekrar Online yapıp uygulamanın normal giriş ekranına döndüğünü kontrol et.
 
 API'nin çevrimdışı çalışmaması mevcut tasarımda beklenen davranıştır.
 
@@ -78,43 +100,49 @@ API'nin çevrimdışı çalışmaması mevcut tasarımda beklenen davranıştır
 
 1. Uygulamayı HTTPS adresinden aç.
 2. Tarayıcı menüsünden **Uygulamayı yükle** veya **Ana ekrana ekle** seç.
-3. Luna ikonu ana ekrana eklenir.
+3. Luna'yı ana ekran ikonundan aç.
+4. Bildirim kullanılacaksa kişisel hesapla giriş yapıp **Ayarlar → Hatırlatıcılar → Bu cihazda bildirimleri aç** seç.
+
+Android launcher uygulama ikonunu cihaz temasına göre daire veya squircle maskesiyle gösterebilir. Maskable ikon bu davranış için eklenmiştir.
 
 ### iOS / Safari
 
 1. HTTPS adresini Safari'de aç.
 2. Paylaş düğmesine bas.
 3. **Ana Ekrana Ekle** seç.
+4. Kurulum ekranında **Open as Web App** seçeneğini açık bırak.
+5. Luna'yı ana ekran ikonundan aç.
 
-iOS'ta otomatik kurulum istemi yerine paylaş menüsü kullanılır.
+iOS'ta otomatik kurulum istemi yerine paylaş menüsü kullanılır. Luna'nın iPhone üzerinde ana ekrana kurulması, oturumun sürmesi ve gerçek Web Push test bildirimi başarıyla doğrulanmıştır. Uygulamayı ana ekrandan silip yeniden kurmak cihaz push aboneliğini kaldırabileceği için bildirim izni tekrar verilmelidir.
 
 ## Güvenli bağlam gereksinimi
 
-Service Worker ve kurulabilirlik için:
+Service Worker, kurulum ve Web Push için:
 
 - `localhost` geliştirme sırasında güvenli kabul edilir.
 - Telefon veya başka cihaz üzerinden erişimde HTTPS gerekir.
-- Yerel ağdaki düz `http://192.168.x.x` adresi PWA özelliklerini tam sağlamaz.
+- Yerel ağdaki düz `http://192.168.x.x` adresi tam PWA ve güvenli cookie akışı için yeterli değildir.
 
-Domain, DNS, Caddy ve production Compose adımları için [HTTPS deployment rehberine](DEPLOYMENT.md) bak.
-
-## Production için eksikler
-
-- 192x192 ve 512x512 PNG ikonlar eklendi
-- 512x512 maskable ikon ve iOS için 180x180 PNG apple-touch-icon eklendi
-- Bağlantı kurulamadığında özel `offline.html` ekranı eklendi
-- Cache sürümünün release sürecinde otomatik artırılması
-- Offline fallback ekranı
-- Güncelleme bulunduğunda kullanıcıya yenileme bildirimi
-- Lighthouse PWA denetimi
-- Gerçek domain/VPS üzerinde HTTPS ve telefon kurulum doğrulaması
-- İstenirse şifreli IndexedDB + offline mutation queue + çatışma çözümü
+Domain/VPS olmadan gerçek telefon testi [Tailscale Funnel rehberiyle](TAILSCALE_FUNNEL.md), kalıcı domain ve Caddy kurulumu [HTTPS deployment rehberiyle](DEPLOYMENT.md) açıklanır.
 
 ## Web Push bildirimleri
 
-Service Worker `push` ve `notificationclick` olaylarını işler. Kullanıcı bildirimleri yalnız **Ayarlar → Hatırlatıcılar** alanındaki düğmeye doğrudan bastığında etkinleştirilebilir. iPhone/iPad'de Luna ana ekrana kurulmuş web uygulaması olarak açılmalıdır.
+Service Worker `push` olayında hassas tarih veya sağlık ayrıntısı içermeyen bildirimi gösterir. `notificationclick`, açık Luna penceresini odaklar veya yeni pencere açar.
+
+Bildirim izni ve aboneliği cihaz bazındadır. Aynı hesap iPhone ve Android gibi birden fazla cihazda ayrı ayrı etkinleştirilebilir; bir cihazdaki aboneliği kapatmak diğer cihaz aboneliklerini silmez. Hatırlatma saati, PMS seçimi ve kaç gün önce uyarılacağı hesap genelinde ortaktır.
 
 VAPID anahtarları, Docker scheduler, API'ler, gizlilik yaklaşımı ve sorun giderme için [Web Push bildirimleri rehberine](NOTIFICATIONS.md) bak.
+
+## Production ve ileri PWA işleri
+
+Tamamlanmamış ileri işler:
+
+- Release sürecinde cache sürümünün otomatik artırılması
+- Yeni sürüm bulunduğunda kullanıcıya uygulama içi yenileme bildirimi
+- Lighthouse PWA/erişilebilirlik denetimi
+- Gerçek domain/VPS üzerinde kalıcı 7/24 HTTPS işletimi
+- Android üzerinde ayrıca fiziksel kurulum ve bildirim testi
+- İstenirse şifreli IndexedDB, offline mutation queue ve çatışma çözümü
 
 ## Tam offline-first tasarım önerisi
 

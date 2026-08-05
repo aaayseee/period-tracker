@@ -66,32 +66,32 @@ Değerlendirme: 3. aşama çalışır durumdadır. UI component testleri ve eri�
 | Beklenti | Durum | Kanıt ve not |
 |---|---|---|
 | Web App Manifest | Tamamlandı | Ad, kısa ad, tema, standalone, dil ve ikon |
-| Service Worker | MVP tamamlandı | Uygulama kabuğunda network-first cache |
-| İkon ve uygulama adı | Tamamlandı | SVG kaynak, PNG 192/512, maskable 512 ve Apple touch 180 ikonları |
-| Telefona kurulum | Tamamlandı | Tailscale Funnel HTTPS adresi iPhone ana ekranına Web App olarak kuruldu ve gerçek cihazda çalıştığı doğrulandı |
+| Service Worker | MVP tamamlandı | Navigation ağ öncelikli + offline ekranı; statik kaynaklar cache öncelikli; `/api` cache dışı; push/click olayları mevcut |
+| İkon ve uygulama adı | Tamamlandı | SVG kaynak, opak PNG 192/512, maskable 512, Apple touch 180 ve cache-busting URL'leri |
+| Telefona kurulum | Tamamlandı | Tailscale Funnel HTTPS adresi iPhone ana ekranına Web App olarak kuruldu; oturum, ikon, veri akışı ve bildirim doğrulandı |
 | Çevrimdışı arayüz | Tamamlandı | Service Worker tarafından önbelleğe alınan özel çevrimdışı hata ekranı |
 | Çevrimdışı veri okuma/yazma | Planlandı | API cache, IndexedDB queue ve sync yok |
-| Lighthouse/installability doğrulaması | Planlandı | Gerçek HTTPS ortamında yapılmalı |
+| Lighthouse/installability doğrulaması | Planlandı | Funnel HTTPS üzerinde manuel kurulum tamam; otomatik Lighthouse raporu henüz alınmadı |
 | Docker ile kurulum | Tamamlandı | Multi-stage frontend, non-root backend, Nginx reverse proxy, healthcheck ve kalıcı named volume |
-| HTTPS deployment | Kısmi | Caddy production katmanı, Secure cookie/CORS ve yerel TLS testi tamam; gerçek domain/VPS yayını için dış altyapı bilgileri gerekli |
+| HTTPS deployment | Kısmi | Tailscale Funnel ile gerçek HTTPS/iPhone beta testi tamam; Caddy production katmanı hazır; kalıcı domain/VPS yayını henüz yapılmadı |
 | Otomatik şifreli yedek | Tamamlandı | Online SQLite snapshot, AES-256-GCM, günlük profil, retention, healthcheck ve kontrollü restore testleri |
-| PMS/regl Web Push bildirimleri | Kısmi | VAPID, kullanıcı tercihleri, cihaz aboneliği, scheduler, hassas olmayan kilit ekranı metni ve testler tamam; fiziksel telefon izin/test bildirimi bekliyor |
+| PMS/regl Web Push bildirimleri | Tamamlandı | VAPID, hesap tercihleri, cihaz abonelikleri, scheduler, teslim tekilleştirme ve gerçek iPhone test bildirimi tamam; Android fiziksel testi ayrıca öneriliyor |
 
-Değerlendirme: Manifest ve Service Worker doğru temel parçaları sağlar; “tam offline-first ve production-ready PWA” aşaması henüz tamamlanmış sayılmaz.
+Değerlendirme: Kurulabilir PWA, özel çevrimdışı ekranı ve Web Push gerçek iPhone üzerinde çalışır. Tam offline-first veri senkronizasyonu ve kalıcı 7/24 production barındırma kapsamı henüz tamamlanmamıştır.
 
 ## Genel sonuç
 
-İlk üç aşama kişisel MVP hedefi için tamamlandı ve otomatik testlerle doğrulanıyor. Dördüncü aşamanın kod tabanı mevcut, ancak gerçek telefon/HTTPS kurulumu, production ikonları ve tam çevrimdışı veri senkronizasyonu eksik.
+İlk üç aşama kişisel MVP hedefi için tamamlandı ve otomatik testlerle doğrulanıyor. Dördüncü aşamada PWA kurulumu, HTTPS Funnel beta erişimi, opak production ikonları ve gerçek iPhone Web Push testi tamamlandı. Kalıcı domain/VPS deployment, Lighthouse raporu ve tam çevrimdışı veri senkronizasyonu eksik.
 
 Bu nedenle doğru ifade:
 
-> Luna çalışan, test edilmiş ve kurulabilir PWA temeline sahip kişisel bir MVP'dir; henüz production deployment ve offline-first aşamalarını tamamlamamıştır.
+> Luna çalışan, test edilmiş, iPhone'a kurulmuş ve bildirim gönderebilen davetli bir PWA MVP'sidir; kalıcı 7/24 production deployment ve offline-first aşamalarını henüz tamamlamamıştır.
 
 ## Önceliklendirilmiş sonraki işler
 
 ### P0 — İnternete açmadan önce
 
-1. HTTPS reverse proxy/deployment
+1. Kalıcı 7/24 VPS/domain üzerinde Caddy deployment
 2. Secure cookie ortam değişkeni
 3. Gerçek domain CORS ayarı
 4. Reverse proxy seviyesinde dağıtık rate limiting
@@ -122,4 +122,4 @@ Bu nedenle doğru ifade:
 
 ## “Bitti” kabul kriteri
 
-Kişisel yerel MVP şu anda bitmiş kabul edilebilir. Production-ready kabulü için P0 maddelerinin tamamı, gerçek telefonda HTTPS kurulum testi ve geri yükleme denemesi zorunludur.
+Kişisel/davetli beta MVP şu anda bitmiş kabul edilebilir; gerçek iPhone HTTPS kurulumu ve Web Push testi tamamlanmıştır. Production-ready kabulü için P0 maddelerinin tamamı, off-site yedek ve gerçek geri yükleme tatbikatı, Lighthouse/erişilebilirlik kontrolü ve kalıcı sunucu işletimi zorunludur.

@@ -1,17 +1,19 @@
 # Docker ile Kurulum
 
-Bu kurulum Luna'yı iki temel ve bir isteğe bağlı container ile çalıştırır:
+Bu kurulum Luna'yı iki temel servis ve üç isteğe bağlı profille çalıştırır:
 
 - `frontend`: React production build'ini sunan Nginx; hosta açılan tek servis.
-- `backend`: FastAPI, migration runner ve SQLite erişimi; yalnız Compose iç ağında.
+- `backend`: FastAPI, migration runner, SQLite ve bildirim API'leri; yalnız Compose iç ağında.
 - `backup`: yalnız `backups` profiliyle başlayan, günlük AES-256-GCM şifreli SQLite snapshot servisi.
+- `notifications`: yalnız `notifications` profiliyle başlayan Web Push zamanlayıcısı.
+- `recovery`: yalnız kontrollü tam veritabanı geri yüklemede kullanılan tek seferlik araç servisi.
 
 SQLite dosyası `luna-data` named volume'ünde tutulur. Container yeniden oluşturulsa veya `docker compose down` çalıştırılsa bile veriler korunur.
 
 ## Gereksinimler
 
 - Docker Desktop
-- Docker Compose v2 veya üzeri
+- `env_file.required` desteği bulunan güncel Docker Compose (bu kurulum 5.1.1 ile doğrulandı)
 - İlk image build'i için internet bağlantısı
 
 Kontrol:
@@ -41,6 +43,8 @@ Tek komut şunları yapar:
 5. Backend'i başlatır ve bekleyen migration'ları uygular.
 6. Backend healthcheck başarılı olduğunda frontend'i başlatır.
 
+Bu komut yalnız temel ackend ve rontend servislerini açar; profile bağlı servisler aşağıdaki komutlarla etkinleştirilir.
+
 Uygulama:
 
 ```text
@@ -53,6 +57,32 @@ Sağlık kontrolü:
 Invoke-RestMethod http://localhost:8080/health
 ```
 
+## İsteğe bağlı profiller
+
+### Şifreli yedek
+
+`.env.backup` oluşturulduktan sonra:
+
+```powershell
+docker compose --env-file .env.backup --profile backups up --build -d backup
+```
+
+Ayrıntılar: [Otomatik şifreli veritabanı yedekleri](ENCRYPTED_BACKUPS.md).
+
+### Web Push zamanlayıcısı
+
+`.env.notifications` oluşturulduktan sonra:
+
+```powershell
+docker compose --profile notifications up --build -d backend frontend notifications
+```
+
+`compose.yaml`, varsa kökteki `.env.notifications` dosyasını hem backend hem scheduler container'ına otomatik yükler. `--env-file .env.notifications` yazmak gerekmez. Anahtar üretimi ve telefon testi: [Web Push bildirimleri](NOTIFICATIONS.md).
+
+### Tam geri yükleme aracı
+
+`recovery` sürekli çalışan bir servis değildir. Yalnız doğrulanmış `.luna-backup` dosyasını geri yüklerken [şifreli yedek rehberindeki](ENCRYPTED_BACKUPS.md) kontrollü komutla çalıştırılır.
+
 ## Container durumları ve loglar
 
 ```powershell
@@ -62,7 +92,7 @@ docker compose logs -f backend
 docker compose logs -f frontend
 ```
 
-Temel kurulumda frontend ve backend servislerinin `healthy` olması beklenir. Şifreli yedek profili etkinse `backup` da `healthy` olmalıdır.
+Temel kurulumda `frontend` ve `backend` servislerinin `healthy` olması beklenir. Etkinleştirildiyse `backup` ve `notifications` servisleri de `healthy` olmalıdır; tek seferlik `recovery` normal durumda çalışmaz.
 
 ## Durdurma ve yeniden başlatma
 
@@ -77,13 +107,19 @@ Container'ları kaldırıp veriyi korumak için:
 docker compose down
 ```
 
-Uygulama kodunu güncelledikten sonra:
+Uygulama kodunu güncelledikten sonra yalnız temel servisler için:
 
 ```powershell
 docker compose up --build -d
 ```
 
-Migration'lar backend başlangıcında otomatik çalışır.
+Yedek ve bildirim profilleri de kullanılıyorsa ilgili anahtar dosyaları hazırken:
+
+```powershell
+docker compose --env-file .env.backup --profile backups --profile notifications up --build -d
+```
+
+Migration'lar backend başlangıcında otomatik çalışır. Bildirim anahtarları `.env.notifications` üzerinden yeniden yüklenir.
 
 ## Veri kalıcılığı
 
@@ -161,9 +197,7 @@ Normalde manuel `upgrade` gerekmez; backend bunu başlangıçta yapar.
 
 Bu Compose kurulumu yerelde HTTP kullanır. `localhost` tarayıcılar tarafından güvenli bağlam kabul edildiği için masaüstünde PWA geliştirme/testi yapılabilir. Başka bir telefondan IP adresiyle erişim gerçek PWA kurulumu ve güvenli cookie için yeterli değildir.
 
-Gerçek telefon kurulumu için sonraki aşamada HTTPS, gerçek domain ve `PERIOD_TRACKER_SECURE_COOKIE=true` yapılandırılmalıdır.
-
-Hazır production Compose ve Caddy yapılandırmasının kullanımı [HTTPS deployment rehberinde](DEPLOYMENT.md) açıklanır.
+Gerçek telefon kurulumu için HTTPS ve `PERIOD_TRACKER_SECURE_COOKIE=true` gerekir. Domain/VPS olmadan beta kullanımında [Tailscale Funnel](TAILSCALE_FUNNEL.md), kalıcı yayın için production Compose ve [Caddy deployment](DEPLOYMENT.md) kullanılır.
 
 ## Sorun giderme
 
@@ -187,6 +221,19 @@ docker compose run --rm backend python -m app.migrations status
 ```
 
 Migration hatası varsa veritabanını silme; önce logu ve [migration belgesini](MIGRATIONS.md) incele.
+
+### “Bildirim servisi sunucuda henüz yapılandırılmadı”
+
+```powershell
+docker compose --profile notifications exec backend python -c "from app.notifications import notifications_configured; print(notifications_configured())"
+docker compose --profile notifications logs --tail 100 backend notifications
+```
+
+İlk komut `True` yazmalıdır. Değilse kökte `.env.notifications` bulunduğunu doğrula ve servisleri yeniden oluştur:
+
+```powershell
+docker compose --profile notifications up -d --force-recreate backend notifications
+```
 
 ### Temiz image build
 

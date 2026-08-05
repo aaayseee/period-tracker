@@ -1,6 +1,6 @@
 # Otomatik Şifreli Veritabanı Yedekleri
 
-Bu sistem, Luna'nın **tüm SQLite veritabanını** düzenli aralıklarla tutarlı bir snapshot olarak alır ve ayrı bir Docker volume'ünde şifreli biçimde saklar. Hesaplar, parola hash'leri, davetler, oturumlar, audit kayıtları, profiller ve sağlık verileri bu tam yedeğe dahildir.
+Bu sistem, Luna'nın **tüm SQLite veritabanını** düzenli aralıklarla tutarlı bir snapshot olarak alır ve ayrı bir Docker volume'ünde şifreli biçimde saklar. Hesaplar, parola hash'leri, davetler, oturumlar, audit kayıtları, profiller, sağlık verileri, bildirim tercihleri, cihaz abonelikleri ve teslim geçmişi bu tam yedeğe dahildir.
 
 Uygulama içindeki kullanıcı bazlı JSON dışa aktarma ile bu sistem farklı amaçlara hizmet eder:
 

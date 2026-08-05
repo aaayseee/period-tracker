@@ -24,7 +24,7 @@ Hosta açık production portları:
 - `443/udp`: HTTP/3
 - `22/tcp`: Yalnız sunucu yönetimi için SSH
 
-FastAPI hosta publish edilmez. Nginx tanılama portu yalnız `127.0.0.1:8080` üzerinde kalır.
+FastAPI hosta publish edilmez. Nginx tanılama portu yalnız `127.0.0.1:8080` üzerinde kalır. `notifications` scheduler aynı SQLite volume'ünü kullanır, Web Push sağlayıcılarına yalnız çıkış bağlantısı kurar ve host portu açmaz.
 
 ## Gerekli bilgiler
 
@@ -100,7 +100,11 @@ PERIOD_TRACKER_SESSION_DAYS=30
 
 `.env.production` Git tarafından yok sayılır. Gerçek domain/e-posta değerlerini repository'ye commit etme.
 
-Şifreli tam yedek anahtarı ayrı `.env.backup` dosyasında tutulur. Yeni ve boş bir production kurulumuysa [şifreli yedek rehberindeki](ENCRYPTED_BACKUPS.md) `init-env` komutuyla sunucuda üret. Mevcut yerel hesapları taşıyacaksan aşağıdaki veri taşıma bölümünü izle ve mevcut anahtarı güvenli SSH kanalıyla aktar. İki dosya da Git dışında kalmalıdır.
+Şifreli tam yedek anahtarı ayrı `.env.backup` dosyasında tutulur. Yeni ve boş bir production kurulumuysa [şifreli yedek rehberindeki](ENCRYPTED_BACKUPS.md) `init-env` komutuyla sunucuda üret.
+
+Web Push için `.env.notifications` dosyası gerekir. Anahtarları [bildirim rehberindeki](NOTIFICATIONS.md) `init-env` komutuyla bir kez üret; mevcut Luna kurulumunu taşıyorsan aynı dosyayı güvenli SSH/SCP kanalıyla sunucuya aktar. VAPID özel anahtarını değiştirmek kayıtlı cihaz aboneliklerini geçersiz hale getirir.
+
+`.env.production`, `.env.backup` ve `.env.notifications` Git dışında kalmalıdır. Anahtar dosyalarını mesajlaşma uygulamasına yapıştırma; parola yöneticisinde veya şifreli yedekte ayrı kopyalarını sakla.
 
 ## Production başlatma
 
@@ -109,6 +113,7 @@ docker compose \
   --env-file .env.production \
   --env-file .env.backup \
   --profile backups \
+  --profile notifications \
   -f compose.yaml \
   -f compose.production.yaml \
   up --build -d
@@ -123,6 +128,7 @@ Bu komut:
 5. Caddy'yi 80/443 üzerinde başlatır.
 6. Domain doğru yönleniyorsa public TLS sertifikasını otomatik alır.
 7. İlk şifreli tam yedeği hemen alır, ardından günlük zamanlamaya geçer.
+8. Web Push scheduler'ını başlatır ve VAPID yapılandırmasını healthcheck ile doğrular.
 
 Durum ve loglar:
 
@@ -131,6 +137,7 @@ docker compose \
   --env-file .env.production \
   --env-file .env.backup \
   --profile backups \
+  --profile notifications \
   -f compose.yaml \
   -f compose.production.yaml \
   ps
@@ -139,16 +146,17 @@ docker compose \
   --env-file .env.production \
   --env-file .env.backup \
   --profile backups \
+  --profile notifications \
   -f compose.yaml \
   -f compose.production.yaml \
   logs -f caddy
 ```
 
-`backend`, `frontend` ve `backup` servislerinin `healthy`, `caddy` servisinin `Up` olması beklenir.
+`backend`, `frontend`, `backup` ve `notifications` servislerinin `healthy`, `caddy` servisinin `Up` olması beklenir.
 
 ## Mevcut yerel hesapları production'a taşıma
 
-Bu akış admin hesabını, kişisel hesabını, arkadaş hesaplarını, davetleri, regl kayıtlarını ve ayarları birlikte taşır. Production backend'i ilk kez başlatmadan önce uygulanması en temiz yöntemdir.
+Bu akış admin hesabını, kişisel hesabını, arkadaş hesaplarını, davetleri, regl kayıtlarını, bildirim tercihlerini ve mevcut push abonelik metadata'sını birlikte taşır. Production backend'i ilk kez başlatmadan önce uygulanması en temiz yöntemdir. Domain/origin değiştiği için kullanıcılar yeni production PWA'sını kurup bildirimleri her cihazda yeniden etkinleştirmelidir.
 
 ### Yerel bilgisayarda
 
@@ -160,7 +168,7 @@ New-Item -ItemType Directory -Force backups
 docker compose --env-file .env.backup --profile backups cp backup:/app/backups/. ./backups/
 ```
 
-Listeden en yeni `.luna-backup` dosyasını seç. Repository kodunu normal Git akışıyla; seçilen şifreli dosyayı ve `.env.backup` dosyasını ise SSH/SCP ile sunucuya aktar. Anahtar içeriğini mesajlaşma uygulamasına yapıştırma.
+Listeden en yeni `.luna-backup` dosyasını seç. Repository kodunu normal Git akışıyla; seçilen şifreli dosyayı, `.env.backup` ve `.env.notifications` dosyalarını ise SSH/SCP ile sunucuya aktar. Anahtar içeriklerini mesajlaşma uygulamasına yapıştırma.
 
 ### Production sunucusunda
 
@@ -253,12 +261,13 @@ docker compose \
   --env-file .env.production \
   --env-file .env.backup \
   --profile backups \
+  --profile notifications \
   -f compose.yaml \
   -f compose.production.yaml \
   up --build -d
 ```
 
-Named volume korunur, bekleyen migration'lar backend başlangıcında uygulanır.
+Named volume korunur, bekleyen migration'lar backend başlangıcında uygulanır ve `.env.notifications` backend/scheduler container'larına yeniden yüklenir.
 
 ## Geri alma
 

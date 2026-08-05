@@ -23,6 +23,7 @@ Yedekte bulunmayanlar:
 - Parola hash'i ve salt
 - Kurtarma kodu
 - Session cookie veya session kayıtları
+- Bildirim tercihleri, cihaz push abonelikleri ve teslim geçmişi
 
 ## Geri yükleme
 

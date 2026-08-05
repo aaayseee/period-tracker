@@ -22,6 +22,8 @@ Audit paneli admin giriş/çıkışı, davet, kullanıcı durumu ve admin güven
 
 Kişisel kullanıcı yalnızca kendi profilini, dönem kayıtlarını, tahminlerini ve JSON yedeğini yönetir. Admin hesabından farklı bir e-posta kullanılmalıdır. Migration öncesindeki mevcut hesap otomatik olarak `user` rolünde korunur; verileri silinmez.
 
+Aynı kişisel hesap birden fazla PWA cihazında kullanılabilir. Hatırlatma tercihleri hesap genelinde paylaşılır; Web Push aboneliği her cihaz için ayrı tutulur. Bir cihazda bildirimleri kapatmak diğer cihaz aboneliklerini kaldırmaz. Admin paneli push endpoint veya abonelik anahtarlarını göstermez.
+
 ## İlk admin hesabını oluşturma
 
 Docker kurulumu:

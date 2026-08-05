@@ -40,12 +40,13 @@ Repository kökünde:
 docker compose `
   --env-file .env.backup `
   --profile backups `
+  --profile notifications `
   -f compose.yaml `
   -f compose.funnel.yaml `
   up --build -d
 ```
 
-`.env.backup` henüz yoksa önce şifreli yedek rehberindeki anahtar oluşturma adımını uygula. Yedek container'ını kullanmadan yalnız uygulamayı başlatmak için:
+Tam özellikli komuttan önce `.env.backup` için [şifreli yedek rehberini](ENCRYPTED_BACKUPS.md), `.env.notifications` için [Web Push rehberini](NOTIFICATIONS.md) kullan. `compose.yaml`, `.env.notifications` dosyasını otomatik yükler. Yedek ve bildirim scheduler container'larını kullanmadan yalnız temel uygulamayı başlatmak için:
 
 ```powershell
 docker compose -f compose.yaml -f compose.funnel.yaml up --build -d
@@ -58,7 +59,7 @@ Invoke-RestMethod http://127.0.0.1:8080/health
 docker compose -f compose.yaml -f compose.funnel.yaml ps
 ```
 
-Sağlık kontrolü `status: ok`, backend ve frontend ise `healthy` göstermelidir.
+Sağlık kontrolü `status: ok`; temel kurulumda `backend` ve `frontend`, profiller açıldıysa ayrıca `backup` ve `notifications` servisleri `healthy` görünmelidir.
 
 ## 3. HTTPS Funnel'ı açma
 
@@ -73,7 +74,7 @@ Komut şu biçimde bir adres gösterir:
 https://bilgisayar-adi.tailnet-adi.ts.net
 ```
 
-Bu adres için ayrıca DNS, domain veya router port yönlendirmesi gerekmez. Tailscale bu özelliği hâlen beta olarak sunar ve bant genişliği sınırları uygular.
+Bu adres için ayrıca DNS, domain veya router port yönlendirmesi gerekmez. Funnel ürün durumu, desteklenen portlar ve kullanım sınırları zamanla değişebileceği için güncel koşulları [resmî Tailscale Funnel belgesinden](https://tailscale.com/kb/1223/funnel) kontrol et.
 
 ## 4. Gerçek telefon testi
 
@@ -84,11 +85,12 @@ Testi mümkünse telefonun Wi-Fi bağlantısını kapatıp mobil veri üzerinden
 3. Yeni kullanıcı kaydı oluştur ve kurtarma kodunu güvenli yere kaydet.
 4. Regl kaydı ekle; takvimde regl, PMS ve ovülasyon işaretlerini kontrol et.
 5. Sayfayı kapatıp yeniden aç; 30 günlük session'ın sürdüğünü doğrula.
-6. Android Chrome'da **Uygulamayı yükle/Ana ekrana ekle**, iOS Safari'de **Paylaş → Ana Ekrana Ekle** ile PWA'yı kur.
+6. Android Chrome'da **Uygulamayı yükle/Ana ekrana ekle**, iOS Safari'de **Paylaş → Ana Ekrana Ekle** ile PWA'yı kur. iOS kurulumunda **Open as Web App** açık olmalıdır.
 7. Ana ekran ikonundan açıp giriş ve kayıt akışını tekrar kontrol et.
-8. Bilgisayarı geçici olarak uyutarak çevrimdışı hata ekranını, yeniden uyandırarak bağlantının geri geldiğini kontrol et.
+8. Bildirim profili açıksa **Ayarlar → Hatırlatıcılar → Bu cihazda bildirimleri aç** seç; sistem iznini ver ve otomatik test bildirimini doğrula.
+9. Bilgisayarı geçici olarak uyutarak çevrimdışı hata ekranını, yeniden uyandırarak bağlantının geri geldiğini kontrol et. Scheduler bilgisayar uykudayken bildirim gönderemez.
 
-Telefon testi başarılı sayılmadan önce admin hesabı, kişisel hesap ve ikinci bir kullanıcı hesabının yalnız kendi yetkili ekranlarını gördüğü doğrulanmalıdır.
+Telefon testi başarılı sayılmadan önce admin hesabı, kişisel hesap ve ikinci bir kullanıcı hesabının yalnız kendi yetkili ekranlarını gördüğü doğrulanmalıdır. Luna'nın iPhone ana ekran kurulumu ve gerçek Web Push bildirimi bu beta mimarisinde başarıyla test edilmiştir; Android için ayrıca fiziksel cihaz testi hâlâ önerilir.
 
 ## 5. Funnel'ı kapatma
 
@@ -104,7 +106,7 @@ tailscale funnel status
 Luna container'larını kapatmak için:
 
 ```powershell
-docker compose -f compose.yaml -f compose.funnel.yaml down
+docker compose --profile backups --profile notifications -f compose.yaml -f compose.funnel.yaml down
 ```
 
 Bu komut SQLite verisini silmez. `down -v` kullanma; `-v` kalıcı veritabanı volume'ünü siler.

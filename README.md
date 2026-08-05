@@ -30,7 +30,7 @@ Uygulama yerel kullanım için çalışan bir MVP'dir:
 - Caddy ile otomatik sertifika yenilemeli HTTPS deployment altyapısı
 - Responsive React arayüzü
 - Manifest, ikon ve Service Worker içeren PWA kabuğu
-- Kullanıcı izinli Web Push, PMS ve yaklaşan regl hatırlatmaları
+- Kullanıcı izinli Web Push, PMS ve yaklaşan regl hatırlatmaları; iPhone kurulu PWA üzerinde gerçek bildirim testi tamamlandı
 
 Üretim ortamına internet üzerinden açılmadan önce yapılması gerekenler [Yol Haritası](docs/ROADMAP.md) belgesinde açıkça listelenmiştir.
 
@@ -43,7 +43,7 @@ Uygulama yerel kullanım için çalışan bir MVP'dir:
 | Backend | Python + FastAPI | REST API, doğrulama ve oturum yönetimi |
 | Veri doğrulama | Pydantic | İstek/yanıt şemaları |
 | Veritabanı | SQLite | Profil, hesap, session ve döngü kayıtları |
-| Migration | Yerel Python migration runner | Sıralı şema yükseltme, geçmiş ve rollback |
+| Migration | Yerel Python migration runner | Sıralı şema yükseltme, geçmiş ve hata halinde transaction rollback |
 | Yedek şifreleme | cryptography + AES-256-GCM | Tam SQLite snapshot gizliliği ve bütünlüğü |
 | Container | Docker Compose + Nginx | Production build, reverse proxy ve kalıcı SQLite volume |
 | HTTPS edge | Caddy 2 | TLS sertifikası, HTTP yönlendirmesi ve güvenlik header'ları |
@@ -82,6 +82,8 @@ Docker Desktop'ın çalıştığından emin ol, repository kökünde şu komutu 
 docker compose up --build -d
 ```
 
+Bu temel komut `backend` ve `frontend` servislerini başlatır. Günlük şifreli yedek ve zamanlanmış Web Push için sırasıyla `backups` ve `notifications` profilleri ayrıca etkinleştirilir; anahtar üretimi ve tam komutlar aşağıdaki teknik belgelerdedir.
+
 İlk yönetici hesabını ayrı olarak oluştur. Bu hesap yalnızca kullanıcı ve davet yönetimi içindir; kişisel döngü takibi için kullanılmaz:
 
 ```powershell
@@ -104,10 +106,10 @@ Gerçek domain üzerinden HTTPS yayını için `.env.production.example` dosyas�
 
 ```powershell
 Copy-Item .env.production.example .env.production
-docker compose --env-file .env.production --env-file .env.backup --profile backups -f compose.yaml -f compose.production.yaml up --build -d
+docker compose --env-file .env.production --env-file .env.backup --profile backups --profile notifications -f compose.yaml -f compose.production.yaml up --build -d
 ```
 
-Domain DNS kayıtları ile sunucu/VPS hazırlığı dahil tam süreç: [HTTPS deployment](docs/DEPLOYMENT.md).
+Bu komuttan önce `.env.notifications` ve `.env.backup` anahtar dosyaları hazırlanmalıdır. `compose.yaml`, `.env.notifications` dosyasını backend ve scheduler için otomatik yükler. Domain DNS kayıtları ile sunucu/VPS hazırlığı dahil tam süreç: [HTTPS deployment](docs/DEPLOYMENT.md).
 
 Domain veya VPS satın almadan gerçek telefonda beta testi için [Tailscale Funnel rehberini](docs/TAILSCALE_FUNNEL.md) kullan. Bildirim anahtarları, scheduler ve telefon izin akışı [Web Push bildirimleri](docs/NOTIFICATIONS.md) belgesindedir.
 
@@ -232,7 +234,7 @@ npm.cmd run preview
 
 ## Yapılandırma
 
-Backend ayarları ortam değişkenleriyle değiştirilebilir:
+Backend, yedek ve bildirim servislerinin ayarları ortam değişkenleriyle değiştirilebilir:
 
 | Değişken | Varsayılan | Açıklama |
 |---|---|---|
@@ -249,6 +251,10 @@ Backend ayarları ortam değişkenleriyle değiştirilebilir:
 | `PERIOD_TRACKER_BACKUP_INTERVAL_HOURS` | `24` | Şifreli tam yedekler arasındaki süre |
 | `PERIOD_TRACKER_BACKUP_RETENTION_DAYS` | `30` | Şifreli yedek saklama süresi |
 | `PERIOD_TRACKER_BACKUP_MIN_FILES` | `3` | Her durumda korunacak en yeni yedek sayısı |
+| `PERIOD_TRACKER_VAPID_PUBLIC_KEY` | boş | PWA aboneliğinde kullanılan açık VAPID anahtarı |
+| `PERIOD_TRACKER_VAPID_PRIVATE_KEY` | boş | Yalnız sunucuda tutulacak VAPID imza anahtarı |
+| `PERIOD_TRACKER_VAPID_SUBJECT` | boş | `mailto:` veya HTTPS iletişim URI'si |
+| `PERIOD_TRACKER_NOTIFICATION_INTERVAL_SECONDS` | `300` | Bildirim scheduler kontrol aralığı |
 
 PowerShell örneği:
 
@@ -283,26 +289,30 @@ Admin paneli sağlık verilerini göstermez. Veritabanının tamamına sunucu y�
 period-tracker/
 ├── backend/
 │   ├── app/
-│   │   ├── auth.py        # Parola ve session işlemleri
-│   │   ├── audit.py       # Güvenli admin hareket kayıtları
-│   │   ├── backup_cli.py  # Şifreli snapshot, doğrulama ve restore CLI'ı
-│   │   ├── rate_limit.py  # Kalıcı auth deneme sınırları
-│   │   ├── database.py    # SQLite bağlantısı ve şema kurulumu
-│   │   ├── main.py        # FastAPI uygulaması ve endpoint'ler
-│   │   ├── schemas.py     # Pydantic veri sözleşmeleri
-│   │   └── services.py    # Tahmin algoritması ve dönüşümler
-│   ├── tests/             # API, auth ve algoritma testleri
+│   │   ├── auth.py             # Parola ve session işlemleri
+│   │   ├── audit.py            # Güvenli admin hareket kayıtları
+│   │   ├── backup_cli.py       # Şifreli snapshot, doğrulama ve restore CLI'ı
+│   │   ├── database.py         # SQLite bağlantısı ve migration başlangıcı
+│   │   ├── migrations/         # v0001-v0006 sıralı şema yükseltmeleri
+│   │   ├── main.py             # FastAPI uygulaması ve endpoint'ler
+│   │   ├── notification_cli.py # VAPID anahtarı, scheduler ve sağlık CLI'ı
+│   │   ├── notifications.py    # Web Push gönderimi ve teslim tekilleştirme
+│   │   ├── rate_limit.py       # Kalıcı auth deneme sınırları
+│   │   ├── schemas.py          # Pydantic veri sözleşmeleri
+│   │   └── services.py         # Tahmin algoritması ve dönüşümler
+│   ├── tests/                  # API, auth, migration, bildirim ve algoritma testleri
 │   ├── Dockerfile
-│   ├── requirements.txt   # Production bağımlılıkları
+│   ├── requirements.txt        # Production bağımlılıkları
 │   └── requirements-dev.txt
 ├── frontend/
-│   ├── public/            # Manifest, Service Worker ve ikon
-│   ├── src/               # React uygulaması, stiller, API ve tipler
+│   ├── public/                 # Manifest, Service Worker, offline ekranı ve ikonlar
+│   ├── src/                    # React uygulaması, stiller, API ve tipler
 │   ├── Dockerfile
 │   ├── nginx.conf
 │   └── package.json
-├── compose.yaml
-├── compose.production.yaml
+├── compose.yaml                # Temel servisler ve isteğe bağlı profiller
+├── compose.funnel.yaml         # Tailscale Funnel beta katmanı
+├── compose.production.yaml     # Caddy production katmanı
 ├── deploy/
 │   └── Caddyfile
 └── docs/
@@ -313,9 +323,9 @@ period-tracker/
 Yerel geliştirmede `localhost` güvenli bağlam kabul edilir. Gerçek telefondan kurulum için uygulamanın HTTPS üzerinden erişilebilir olması gerekir.
 
 - Android/Chrome: Menü → **Ana ekrana ekle** veya **Uygulamayı yükle**
-- iPhone/Safari: Paylaş → **Ana Ekrana Ekle**
+- iPhone/Safari: Paylaş → **Ana Ekrana Ekle**; kurulum ekranında **Open as Web App** açık
 
-Manifest 192×192, 512×512 ve maskable PNG ikonları; iOS için 180×180 Apple touch icon içerir. Service Worker bağlantı yokken özel çevrimdışı ekranını gösterir. API verilerini çevrimdışı yazıp sonradan senkronize etmez. Ayrıntılar: [PWA ve çevrimdışı davranış](docs/PWA.md).
+Manifest 192×192, 512×512 ve maskable PNG ikonları; iOS için opak 180×180 Apple touch icon içerir. Service Worker bağlantı yokken özel çevrimdışı ekranını gösterir ve Web Push olaylarını işler. Bildirim izni her cihazda ayrı verilir; tercihler hesap genelinde, abonelikler cihaz bazında tutulur. API verilerini çevrimdışı yazıp sonradan senkronize etmez. Ayrıntılar: [PWA ve çevrimdışı davranış](docs/PWA.md).
 
 ## Sorun giderme
 
